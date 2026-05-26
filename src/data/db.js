@@ -13,6 +13,8 @@ export {
   menuData,
   CATEGORIAS_MENU,
   reservasOcupadasIniciales,
+  IMAGEN_CARTA_FALLBACK,
+  IMAGEN_HERO_BODEGA,
   claveReserva,
   generarLocalizador,
   formatearPrecio,

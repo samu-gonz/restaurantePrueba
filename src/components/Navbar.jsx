@@ -15,6 +15,11 @@ function comprobarApertura(fecha = new Date()) {
   return abiertoAlmuerzo || abiertoCena
 }
 
+const COLOR_SEMAFORO_ABIERTO = '#22c55e'
+const COLOR_SEMAFORO_CERRADO = '#ef4444'
+const TEXTO_ABIERTO = 'Abierto Ahora'
+const TEXTO_CERRADO = 'Cerrado (Abre 12:00 / 19:30)'
+
 /**
  * Navbar flotante — recibe paginaActual y setPaginaActual desde App.jsx.
  */
@@ -80,16 +85,31 @@ export default function Navbar({ paginaActual, setPaginaActual }) {
         </button>
 
         <div className="navbar-float__actions">
-          <div className="navbar-status-widget" role="status" aria-live="polite">
+          <div
+            className={`navbar-status-widget ${estaAbierto ? 'navbar-status-widget--open' : 'navbar-status-widget--closed'}`}
+            role="status"
+            aria-live="polite"
+            aria-label={estaAbierto ? TEXTO_ABIERTO : TEXTO_CERRADO}
+          >
             <span
-              className={`navbar-status-widget__dot ${estaAbierto ? 'pulse-green' : ''}`}
+              className={
+                estaAbierto
+                  ? 'navbar-status-widget__dot pulse-green'
+                  : 'navbar-status-widget__dot navbar-status-widget__dot--closed'
+              }
               style={{
-                backgroundColor: estaAbierto ? '#22c55e' : '#eab308',
+                backgroundColor: estaAbierto ? COLOR_SEMAFORO_ABIERTO : COLOR_SEMAFORO_CERRADO,
+                boxShadow: estaAbierto
+                  ? undefined
+                  : '0 0 6px rgba(239, 68, 68, 0.35)',
               }}
               aria-hidden="true"
             />
-            <span className="navbar-status-widget__text">
-              {estaAbierto ? 'Abierto Ahora' : 'Cerrado (Abre 12:00 / 19:30)'}
+            <span
+              className="navbar-status-widget__text"
+              style={{ color: estaAbierto ? 'var(--text-main)' : 'var(--text-muted)' }}
+            >
+              {estaAbierto ? TEXTO_ABIERTO : TEXTO_CERRADO}
             </span>
           </div>
 

@@ -14,6 +14,13 @@ export const TURNOS = {
   CENA: 'cena',
 }
 
+/** URLs Pexels — compatibles con localhost (sin hotlinking agresivo) */
+export const IMAGEN_CARTA_FALLBACK =
+  'https://images.pexels.com/photos/1267320/pexels-photo-1267320.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&fit=crop'
+
+export const IMAGEN_HERO_BODEGA =
+  'https://images.pexels.com/photos/340592/pexels-photo-340592.jpeg?auto=compress&cs=tinysrgb&w=1400&h=1000&fit=crop'
+
 export const menuData = [
   {
     id: 1,
@@ -21,7 +28,7 @@ export const menuData = [
     categoria: 'entrantes',
     precio: 6.8,
     imagen:
-      'https://images.unsplash.com/photo-1486297678162-eb2a19b0a32a?auto=format&fit=crop&w=800&q=80',
+      'https://images.pexels.com/photos/821365/pexels-photo-821365.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&fit=crop',
     descripcion:
       'Queso ahumado de la isla a la plancha, acompañado de mojo verde de cilantro y rojo palmero.',
     alergenos: ['Lácteos'],
@@ -32,7 +39,7 @@ export const menuData = [
     categoria: 'entrantes',
     precio: 5.5,
     imagen:
-      'https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=800&q=80',
+      'https://images.pexels.com/photos/691114/pexels-photo-691114.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&fit=crop',
     descripcion:
       'Gofio local amasado con caldo de pescado de roca, cebolla roja, queso duro y un toque de mojo.',
     alergenos: ['Gluten', 'Lácteos'],
@@ -43,7 +50,7 @@ export const menuData = [
     categoria: 'carnes',
     precio: 10.5,
     imagen:
-      'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80',
+      'https://images.pexels.com/photos/361184/pexels-photo-361184.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&fit=crop',
     descripcion:
       'Tacos de cerdo seleccionados, adobados durante 24h con ajo, orégano, pimentón y vino blanco, con papas fritas.',
     alergenos: [],
@@ -54,7 +61,7 @@ export const menuData = [
     categoria: 'carnes',
     precio: 13.5,
     imagen:
-      'https://images.unsplash.com/photo-1529193591184-38314517f8f8?auto=format&fit=crop&w=800&q=80',
+      'https://images.pexels.com/photos/1639562/pexels-photo-1639562.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&fit=crop',
     descripcion:
       'Costilla de cerdo sazonada al punto de sal, papas de la tierra y piña de millo con mojo de cilantro.',
     alergenos: [],
@@ -65,7 +72,7 @@ export const menuData = [
     categoria: 'postres',
     precio: 4.5,
     imagen:
-      'https://images.unsplash.com/photo-1551024506-0bccd28d51b2?auto=format&fit=crop&w=800&q=80',
+      'https://images.pexels.com/photos/45201/pexels-photo-45201.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&fit=crop',
     descripcion:
       'Postre artesanal con base de galleta, dulce de leche premium, nata montada y suspiros de Moya.',
     alergenos: ['Lácteos', 'Gluten'],

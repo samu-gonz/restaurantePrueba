@@ -11,7 +11,7 @@ import {
   reservasOcupadasIniciales,
 } from '../data/dbSimulada'
 
-export const STORAGE_KEY_AFORO = 'guachinche_realejo_aforo_v1'
+export const STORAGE_KEY_AFORO = 'reservas_guachinche'
 
 /**
  * Carga el mapa de mesas ocupadas.
