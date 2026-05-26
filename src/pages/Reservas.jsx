@@ -1,8 +1,12 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   CONFIG_RESTAURANTE,
+  cargarAforoDesdeStorage,
+  contarMesasOcupadas,
   generarLocalizador,
-  reservasOcupadasDB,
+  hayDisponibilidadEnStorage,
+  mesasLibresEnTurno,
+  registrarMesaEnStorage,
 } from '../data/db'
 
 const MSG_DIA_CERRADO =
@@ -11,7 +15,6 @@ const MSG_DIA_CERRADO =
 const MSG_AFORO_COMPLETO =
   '🔴 Lo sentimos, no quedan mesas libres para este turno. El aforo máximo de 30 mesas está completo.'
 
-/** Parsea YYYY-MM-DD en hora local (evita que getDay() falle por UTC). */
 function parsearFechaLocal(fechaStr) {
   const [y, m, d] = fechaStr.split('-').map(Number)
   return new Date(y, m - 1, d)
@@ -22,119 +25,147 @@ function fechaMinimaHoy() {
   return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}-${String(h.getDate()).padStart(2, '0')}`
 }
 
-function claveDB(fecha, turno) {
-  return `${fecha}-${turno}`
+function formatearFechaLegible(fechaStr) {
+  return parsearFechaLocal(fechaStr).toLocaleDateString('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
 }
 
 /**
- * Página exclusiva de reservas.
- * Intercepta lunes/martes y calcula aforo en tiempo real contra reservasOcupadasDB.
+ * Reservas con persistencia en localStorage.
+ *
+ * 1. Al montar → cargarAforoDesdeStorage() (o semilla de db.js)
+ * 2. Al cambiar fecha/turno → consultar estado vivo en memoria (sincronizado con storage)
+ * 3. Al confirmar → validar, +1 mesa, localStorage.setItem, éxito inmutable
  */
 export default function Reservas({ setPaginaActual }) {
+  const [aforoDB, setAforoDB] = useState(null)
+  const [storageListo, setStorageListo] = useState(false)
+
   const [fecha, setFecha] = useState('')
   const [turno, setTurno] = useState('almuerzo')
   const [nombre, setNombre] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
-  const [exito, setExito] = useState(false)
-  const [localizador, setLocalizador] = useState('')
   const [mesasLibres, setMesasLibres] = useState(CONFIG_RESTAURANTE.TOTAL_MESAS_MAX)
 
-  /**
-   * Valida día de descanso y consulta aforo en reservasOcupadasDB.
-   * Clave: `${fecha}-${turno}` → mesas ocupadas
-   */
-  const verificarDisponibilidad = (selectedDate, selectedTurn) => {
-    setErrorMsg('')
+  /** Snapshot inmutable tras confirmar (no cambia si el aforo se actualiza después). */
+  const [reservaGuardada, setReservaGuardada] = useState(null)
 
-    if (!selectedDate) {
-      setMesasLibres(CONFIG_RESTAURANTE.TOTAL_MESAS_MAX)
-      return
-    }
+  // ── Hidratar desde localStorage al montar el componente ─────────────────
+  useEffect(() => {
+    const datos = cargarAforoDesdeStorage()
+    setAforoDB(datos)
+    setStorageListo(true)
+  }, [])
 
-    // 1. Lunes (1) y martes (2) — cierre por viñedos y descanso
-    const diaSemana = parsearFechaLocal(selectedDate).getDay()
-    if (diaSemana === 1 || diaSemana === 2) {
-      setErrorMsg(MSG_DIA_CERRADO)
-      setMesasLibres(0)
-      return
-    }
+  const verificarDisponibilidad = useCallback(
+    (selectedDate, selectedTurn, aforo) => {
+      setErrorMsg('')
 
-    // 2. Aforo real desde la BD simulada
-    const keyDB = claveDB(selectedDate, selectedTurn)
-    const mesasOcupadas = reservasOcupadasDB[keyDB] || 0
-    const libres = CONFIG_RESTAURANTE.TOTAL_MESAS_MAX - mesasOcupadas
+      if (!selectedDate || !aforo) {
+        setMesasLibres(CONFIG_RESTAURANTE.TOTAL_MESAS_MAX)
+        return { valido: false }
+      }
 
-    setMesasLibres(libres)
+      const diaSemana = parsearFechaLocal(selectedDate).getDay()
+      if (diaSemana === 1 || diaSemana === 2) {
+        setErrorMsg(MSG_DIA_CERRADO)
+        setMesasLibres(0)
+        return { valido: false }
+      }
 
-    if (libres <= 0) {
-      setErrorMsg(MSG_AFORO_COMPLETO)
-    }
-  }
+      const libres = mesasLibresEnTurno(aforo, selectedDate, selectedTurn)
+      setMesasLibres(libres)
+
+      if (libres <= 0) {
+        setErrorMsg(MSG_AFORO_COMPLETO)
+        return { valido: false }
+      }
+
+      return { valido: true, libres }
+    },
+    [],
+  )
+
+  useEffect(() => {
+    if (!storageListo || !aforoDB || !fecha) return
+    verificarDisponibilidad(fecha, turno, aforoDB)
+  }, [fecha, turno, aforoDB, storageListo, verificarDisponibilidad])
 
   const handleFechaChange = (e) => {
-    const valor = e.target.value
-    setFecha(valor)
-    verificarDisponibilidad(valor, turno)
+    setFecha(e.target.value)
+    setReservaGuardada(null)
   }
 
   const handleTurnoChange = (e) => {
-    const valor = e.target.value
-    setTurno(valor)
-    verificarDisponibilidad(fecha, valor)
+    setTurno(e.target.value)
+    setReservaGuardada(null)
   }
 
   const ejecutarReserva = (e) => {
     e.preventDefault()
-    if (!fecha || !nombre.trim()) return
+    if (!aforoDB || !fecha || !nombre.trim()) return
 
-    // Revalidación síncrona antes del INSERT (evita estado React desactualizado)
     const diaSemana = parsearFechaLocal(fecha).getDay()
     if (diaSemana === 1 || diaSemana === 2) {
       setErrorMsg(MSG_DIA_CERRADO)
       return
     }
 
-    const keyDB = claveDB(fecha, turno)
-    const ocupadas = reservasOcupadasDB[keyDB] || 0
-    const libres = CONFIG_RESTAURANTE.TOTAL_MESAS_MAX - ocupadas
-
-    if (libres <= 0) {
+    if (!hayDisponibilidadEnStorage(aforoDB, fecha, turno, 1)) {
       setErrorMsg(MSG_AFORO_COMPLETO)
       setMesasLibres(0)
       return
     }
 
-    // Simulación INSERT en base de datos (+1 mesa)
-    if (reservasOcupadasDB[keyDB]) {
-      reservasOcupadasDB[keyDB] += 1
-    } else {
-      reservasOcupadasDB[keyDB] = 1
+    const ocupadasAntes = contarMesasOcupadas(aforoDB, fecha, turno)
+    const codigo = generarLocalizador()
+
+    // INSERT: +1 mesa y persistir en localStorage
+    const aforoActualizado = registrarMesaEnStorage(aforoDB, fecha, turno)
+    setAforoDB(aforoActualizado)
+
+    const confirmacion = {
+      localizador: codigo,
+      nombre: nombre.trim(),
+      fecha,
+      fechaLegible: formatearFechaLegible(fecha),
+      turno,
+      turnoLabel: turno === 'almuerzo' ? 'Almuerzo (12:00 - 16:00)' : 'Cena (19:30 - 23:00)',
+      mesasOcupadasTrasReserva: ocupadasAntes + 1,
+      mesasLibresTrasReserva: CONFIG_RESTAURANTE.TOTAL_MESAS_MAX - (ocupadasAntes + 1),
+      confirmadoEn: new Date().toISOString(),
     }
 
-    const codigo = generarLocalizador()
-    console.log('[BD Simulada] INSERT reserva:', {
-      keyDB,
-      nombre: nombre.trim(),
-      turno,
-      mesasOcupadas: reservasOcupadasDB[keyDB],
-      localizador: codigo,
-    })
+    console.log('[localStorage] Reserva persistida:', confirmacion)
 
-    setLocalizador(codigo)
-    setExito(true)
+    setReservaGuardada(confirmacion)
+    setMesasLibres(confirmacion.mesasLibresTrasReserva)
   }
 
   const reiniciar = () => {
-    setExito(false)
+    setReservaGuardada(null)
     setFecha('')
     setTurno('almuerzo')
     setNombre('')
     setErrorMsg('')
-    setLocalizador('')
-    setMesasLibres(CONFIG_RESTAURANTE.TOTAL_MESAS_MAX)
+    if (aforoDB) {
+      setMesasLibres(CONFIG_RESTAURANTE.TOTAL_MESAS_MAX)
+    }
   }
 
-  const turnoLabel = turno === 'almuerzo' ? 'Almuerzo' : 'Cena'
+  if (!storageListo) {
+    return (
+      <div className="reservas-page">
+        <div className="reservas-card reservas-card--loading">
+          <p className="text-muted">Cargando disponibilidad…</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="reservas-page">
@@ -142,17 +173,40 @@ export default function Reservas({ setPaginaActual }) {
         <h2 className="reservas-card__title">Reserva tu Mesa</h2>
         <p className="reservas-card__subtitle">
           Aforo limitado a {CONFIG_RESTAURANTE.TOTAL_MESAS_MAX} mesas por turno.
+          Tus reservas se guardan en este dispositivo.
         </p>
 
-        {exito ? (
+        {reservaGuardada ? (
           <div className="reservas-exito">
             <h3 className="reservas-exito__titulo">¡Reserva Confirmada!</h3>
             <p className="reservas-exito__texto">
-              Todo listo, {nombre}. Tu mesa está guardada para el turno de {turnoLabel}.
+              Todo listo, {reservaGuardada.nombre}. Tu mesa está guardada para el
+              turno de {reservaGuardada.turnoLabel}.
             </p>
             <div className="reservas-exito__locator">
-              LOCALIZADOR: {localizador}
+              LOCALIZADOR: {reservaGuardada.localizador}
             </div>
+
+            <div className="reservas-exito__summary">
+              <dl>
+                <div>
+                  <dt>Fecha</dt>
+                  <dd>{reservaGuardada.fechaLegible}</dd>
+                </div>
+                <div>
+                  <dt>Turno</dt>
+                  <dd>{reservaGuardada.turnoLabel}</dd>
+                </div>
+                <div>
+                  <dt>Aforo tras tu reserva</dt>
+                  <dd>
+                    {reservaGuardada.mesasOcupadasTrasReserva} /{' '}
+                    {CONFIG_RESTAURANTE.TOTAL_MESAS_MAX} mesas ocupadas
+                  </dd>
+                </div>
+              </dl>
+            </div>
+
             <div className="reservas-exito__actions">
               <button type="button" className="btn-premium btn--block" onClick={reiniciar}>
                 Nueva reserva
@@ -202,13 +256,16 @@ export default function Reservas({ setPaginaActual }) {
               </div>
             </div>
 
-            {/* Panel aforo en tiempo real */}
             {fecha && !errorMsg && (
               <div className="reservas-aforo-panel" role="status" aria-live="polite">
                 Mesas disponibles para este turno:{' '}
                 <strong>
                   {mesasLibres} de {CONFIG_RESTAURANTE.TOTAL_MESAS_MAX}
                 </strong>
+                <span className="reservas-aforo-panel__hint">
+                  {' '}
+                  (datos en tiempo real desde localStorage)
+                </span>
               </div>
             )}
 

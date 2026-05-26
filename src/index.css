@@ -869,13 +869,31 @@ textarea:focus {
   border: 1px solid var(--border-color);
   border-radius: 24px;
   overflow: hidden;
+  isolation: isolate;
 }
 
 .home-hero__visual img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: brightness(0.7) contrast(1.05);
+  object-position: center 35%;
+}
+
+.home-hero__visual--vineyard img {
+  filter: brightness(0.55) contrast(1.1) saturate(0.85);
+}
+
+.home-hero__visual-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    145deg,
+    rgba(13, 13, 13, 0.35) 0%,
+    rgba(13, 13, 13, 0.55) 45%,
+    rgba(13, 13, 13, 0.88) 100%
+  );
+  mix-blend-mode: multiply;
+  pointer-events: none;
 }
 
 .home-hero__visual-caption {
@@ -996,6 +1014,91 @@ textarea:focus {
 .carta-plato:hover {
   border-color: var(--accent-color);
   transform: translateY(-3px);
+}
+
+/* Carta premium — imagen + contenido */
+.carta-grid--premium {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.carta-plato-premium {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.carta-plato-premium:hover {
+  border-color: color-mix(in srgb, var(--accent-color) 55%, var(--border-color));
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+
+.carta-plato-premium__media {
+  position: relative;
+  height: 200px;
+  overflow: hidden;
+  background: var(--bg-main);
+}
+
+.carta-plato-premium__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.carta-plato-premium:hover .carta-plato-premium__media img {
+  transform: scale(1.1);
+}
+
+.carta-plato-premium__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 0.75rem;
+  padding: 1.5rem;
+}
+
+.carta-plato-premium__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.carta-plato-premium__header h3 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.carta-plato-premium__precio {
+  color: var(--accent-color);
+  font-weight: 700;
+  font-size: 1.15rem;
+  white-space: nowrap;
+}
+
+.carta-plato-premium__desc {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  flex: 1;
+}
+
+.carta-plato-premium__alergenos {
+  font-size: 0.78rem;
+  color: #737373;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.carta-plato-premium__alergenos--none {
+  opacity: 0.75;
+  font-style: italic;
 }
 
 .carta-plato__header {
@@ -1351,6 +1454,18 @@ textarea:focus {
 
 .reservas-aforo-panel strong {
   color: var(--status-open);
+}
+
+.reservas-aforo-panel__hint {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.reservas-card--loading {
+  text-align: center;
+  padding: 4rem 2rem;
 }
 
 .reservas-alert {

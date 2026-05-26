@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { menuData } from '../data/db'
 
-const IMAGEN_HERO =
-  'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1200&q=80'
+/** Viñedo / bodega en tonos oscuros — columna Hero */
+const IMAGEN_HERO_VINEDO =
+  'https://images.unsplash.com/photo-1506377247377-2a5b3e417eb9?auto=format&fit=crop&w=1400&q=85'
 
 const MAPS_URL = `https://maps.google.com/?q=${encodeURIComponent(
   'Los Realejos, Tenerife, España',
@@ -16,8 +17,7 @@ const CATEGORIAS = [
 ]
 
 /**
- * Vista principal: Hero asimétrico + Bento Grid + Carta digital filtrable.
- * @param {function} setPaginaActual - Navegación a reservas ('reservas' | 'home')
+ * Vista principal: Hero premium, Bento y Carta visual con imágenes.
  */
 export default function Home({ setPaginaActual }) {
   const [categoria, setCategoria] = useState('todos')
@@ -33,7 +33,6 @@ export default function Home({ setPaginaActual }) {
 
   return (
     <div className="home">
-      {/* Hero asimétrico */}
       <section className="home-hero" aria-labelledby="home-hero-title">
         <div className="home-hero__content">
           <h1 id="home-hero-title" className="home-hero__title">
@@ -42,9 +41,8 @@ export default function Home({ setPaginaActual }) {
             <span className="home-hero__accent">Tradición moderna.</span>
           </h1>
           <p className="home-hero__desc">
-            Disfruta del auténtico vino de nuestra propia cosecha cosechado en el
-            norte de Tenerife y de platos tradicionales canarios cocinados con una
-            perspectiva contemporánea.
+            Disfruta del auténtico vino de nuestra propia cosecha en el norte de
+            Tenerife y platos canarios con una perspectiva contemporánea.
           </p>
           <div className="home-hero__actions">
             <button type="button" className="btn-premium" onClick={scrollCarta}>
@@ -60,16 +58,20 @@ export default function Home({ setPaginaActual }) {
           </div>
         </div>
 
-        <figure className="home-hero__visual">
-          <img src={IMAGEN_HERO} alt="Mesa gourmet en el lagar de El Realejo" />
-          <div className="home-hero__visual-caption">
+        <figure className="home-hero__visual home-hero__visual--vineyard">
+          <img
+            src={IMAGEN_HERO_VINEDO}
+            alt="Viñedos al atardecer en el norte de Tenerife"
+            fetchPriority="high"
+          />
+          <div className="home-hero__visual-scrim" aria-hidden="true" />
+          <figcaption className="home-hero__visual-caption">
             <p className="home-hero__visual-label">Nuestro espacio</p>
             <p className="home-hero__visual-title">El lagar de El Realejo</p>
-          </div>
+          </figcaption>
         </figure>
       </section>
 
-      {/* Bento Grid informativo */}
       <section className="bento-grid home-bento" aria-label="Información del local">
         <article className="bento-card">
           <h3 className="bento-card__title">Nuestra Ubicación</h3>
@@ -87,13 +89,12 @@ export default function Home({ setPaginaActual }) {
         <article className="bento-card bento-card--accent">
           <h3 className="bento-card__title">Vino de Cosecha</h3>
           <p className="bento-card__text">
-            Listán Negro y Blanco Afrutado directamente extraído de nuestras
-            barricas esta temporada.
+            Listán Negro y Blanco Afrutado extraído de nuestras barricas esta
+            temporada.
           </p>
         </article>
       </section>
 
-      {/* Carta digital interactiva — sin PDF */}
       <section id="carta-digital" className="carta-digital" aria-labelledby="carta-titulo">
         <h2 id="carta-titulo" className="carta-digital__title">
           La Carta de Hoy
@@ -114,23 +115,30 @@ export default function Home({ setPaginaActual }) {
           ))}
         </div>
 
-        <div className="carta-grid">
+        <div className="carta-grid carta-grid--premium">
           {platosFiltrados.map((plato) => (
-            <article key={plato.id} className="carta-plato">
-              <div className="carta-plato__body">
-                <header className="carta-plato__header">
+            <article key={plato.id} className="carta-plato-premium">
+              <div className="carta-plato-premium__media">
+                <img src={plato.imagen} alt={plato.nombre} loading="lazy" />
+              </div>
+              <div className="carta-plato-premium__body">
+                <header className="carta-plato-premium__header">
                   <h3>{plato.nombre}</h3>
-                  <span className="carta-plato__precio">
+                  <span className="carta-plato-premium__precio">
                     {plato.precio.toFixed(2)}€
                   </span>
                 </header>
-                <p className="carta-plato__desc">{plato.descripcion}</p>
+                <p className="carta-plato-premium__desc">{plato.descripcion}</p>
+                {plato.alergenos.length > 0 ? (
+                  <p className="carta-plato-premium__alergenos">
+                    Contiene: {plato.alergenos.join(', ')}
+                  </p>
+                ) : (
+                  <p className="carta-plato-premium__alergenos carta-plato-premium__alergenos--none">
+                    Sin alérgenos declarados
+                  </p>
+                )}
               </div>
-              {plato.alergenos.length > 0 && (
-                <p className="carta-plato__alergenos">
-                  Contiene: {plato.alergenos.join(', ')}
-                </p>
-              )}
             </article>
           ))}
         </div>
