@@ -206,7 +206,7 @@ export default function Home({ setPaginaActual }) {
         </div>
 
         {/* Columna visual: visible en desktop, oculta en móvil */}
-        <div className="home-hero__visual-col">
+        <div className="home-hero__visual-col" id="galeria-lagar">
           <div className="home-hero__bodega-wrap" role="img" aria-label="Bodega con barricas">
             <img
               src={IMAGEN_HERO_BODEGA}
@@ -225,7 +225,11 @@ export default function Home({ setPaginaActual }) {
       </section>
 
       {/* Bento */}
-      <section className="bento-grid home-bento" aria-label="Información del local">
+      <section
+        id="contacto"
+        className="bento-grid home-bento"
+        aria-label="Información del local y contacto"
+      >
         <article className="bento-card">
           <h3 className="bento-card__title">Nuestra Ubicación</h3>
           <p className="bento-card__text">Los Realejos, Tenerife, España</p>

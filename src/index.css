@@ -480,21 +480,9 @@ textarea:focus {
   gap: var(--space-4);
 }
 
+/* Indicador semáforo: solo en sidebar (ver Navbar.css) */
 .navbar-status-widget {
   display: none;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.8rem;
-  font-size: 0.85rem;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 20px;
-}
-
-@media (min-width: 36rem) {
-  .navbar-status-widget {
-    display: flex;
-  }
 }
 
 .navbar-status-widget__dot {
@@ -513,7 +501,7 @@ textarea:focus {
 }
 
 .navbar-status-widget--closed {
-  border-color: rgba(239, 68, 68, 0.2);
+  border-color: #262626;
 }
 
 .navbar-status-widget__text {
@@ -523,18 +511,6 @@ textarea:focus {
 
 .navbar-float__links {
   display: none;
-  align-items: center;
-  gap: 2rem;
-}
-
-@media (min-width: 48rem) {
-  .navbar-float__links {
-    display: flex;
-  }
-
-  .navbar-float__toggle {
-    display: none;
-  }
 }
 
 .navbar-nav-link {

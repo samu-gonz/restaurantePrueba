@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Chatbot from './components/Chatbot'
 import Navbar from './components/Navbar'
 import Home from './pages/Home'
 import Reservas from './pages/Reservas'
@@ -31,6 +32,8 @@ export default function App() {
       <footer className="app-footer">
         © 2026 Guachinche El Realejo. Proyecto de Portfolio de Desarrollo Web.
       </footer>
+
+      <Chatbot setPaginaActual={cambiarPagina} />
     </div>
   )
 }
