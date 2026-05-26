@@ -1,32 +1,36 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { useState } from 'react'
 import Navbar from './components/Navbar'
 import Home from './pages/Home'
 import Reservas from './pages/Reservas'
 
 /**
- * Enrutador principal de la aplicación multipágina.
- *
- * Rutas:
- *  - `/`        → Home (Navbar + Hero + Bento + Carta)
- *  - `/reservar` → Gestión de reservas con aforo simulado (30 mesas/turno)
- *
- * El Navbar es común a todas las rutas e incluye el CTA "Reservar Mesa".
+ * Orquestador principal: controla qué página renderizar según el estado del Navbar.
+ * paginaActual: 'home' | 'reservas'
  */
 export default function App() {
+  const [paginaActual, setPaginaActual] = useState('home')
+
+  const cambiarPagina = (pagina) => {
+    setPaginaActual(pagina)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   return (
-    <BrowserRouter>
+    <div className="app">
       <a href="#contenido" className="skip-link">
         Saltar al contenido
       </a>
 
-      <Navbar />
+      <Navbar paginaActual={paginaActual} setPaginaActual={cambiarPagina} />
 
       <main id="contenido">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/reservar" element={<Reservas />} />
-        </Routes>
+        {paginaActual === 'home' && <Home setPaginaActual={cambiarPagina} />}
+        {paginaActual === 'reservas' && <Reservas setPaginaActual={cambiarPagina} />}
       </main>
-    </BrowserRouter>
+
+      <footer className="app-footer">
+        © 2026 Guachinche El Realejo. Proyecto de Portfolio de Desarrollo Web.
+      </footer>
+    </div>
   )
 }

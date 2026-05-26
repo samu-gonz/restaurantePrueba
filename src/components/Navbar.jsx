@@ -1,27 +1,31 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
 
-const ENLACES = [
-  { to: '/#carta', label: 'Carta' },
-  { to: '/#ubicacion', label: 'Ubicación' },
-]
+/**
+ * Comprueba si el guachinche está abierto (hora del dispositivo).
+ * Almuerzo: 12:00–16:00 · Cena: 19:30–23:00
+ */
+function comprobarApertura(fecha = new Date()) {
+  const hora = fecha.getHours()
+  const minutos = fecha.getMinutes()
+  const tiempoActual = hora + minutos / 60
 
-function estaAbierto(fecha = new Date()) {
-  const totalMinutos = fecha.getHours() * 60 + fecha.getMinutes()
-  const almuerzo = totalMinutos >= 12 * 60 && totalMinutos <= 16 * 60
-  const cena = totalMinutos >= 19 * 60 + 30 && totalMinutos <= 23 * 60
-  return almuerzo || cena
+  const abiertoAlmuerzo = tiempoActual >= 12.0 && tiempoActual <= 16.0
+  const abiertoCena = tiempoActual >= 19.5 && tiempoActual <= 23.0
+
+  return abiertoAlmuerzo || abiertoCena
 }
 
-export default function Navbar() {
-  const { pathname } = useLocation()
-  const [abierto, setAbierto] = useState(() => estaAbierto())
+/**
+ * Navbar flotante — recibe paginaActual y setPaginaActual desde App.jsx.
+ */
+export default function Navbar({ paginaActual, setPaginaActual }) {
+  const [estaAbierto, setEstaAbierto] = useState(() => comprobarApertura())
   const [menuAbierto, setMenuAbierto] = useState(false)
 
   const cerrarMenu = useCallback(() => setMenuAbierto(false), [])
 
   useEffect(() => {
-    const tick = () => setAbierto(estaAbierto(new Date()))
+    const tick = () => setEstaAbierto(comprobarApertura(new Date()))
     tick()
     const id = setInterval(tick, 60_000)
     return () => clearInterval(id)
@@ -29,116 +33,117 @@ export default function Navbar() {
 
   useEffect(() => {
     cerrarMenu()
-  }, [pathname, cerrarMenu])
+  }, [paginaActual, cerrarMenu])
 
   useEffect(() => {
     if (!menuAbierto) return
 
-    const onKey = (e) => {
+    const onEscape = (e) => {
       if (e.key === 'Escape') cerrarMenu()
     }
 
     document.body.style.overflow = 'hidden'
-    window.addEventListener('keydown', onKey)
+    window.addEventListener('keydown', onEscape)
     return () => {
       document.body.style.overflow = ''
-      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('keydown', onEscape)
     }
   }, [menuAbierto, cerrarMenu])
 
-  const irInicioHash = (hash) => {
+  const irInicio = () => {
+    setPaginaActual('home')
     cerrarMenu()
-    if (pathname !== '/') {
-      window.location.href = `/${hash}`
+  }
+
+  const irReservas = () => {
+    setPaginaActual('reservas')
+    cerrarMenu()
+  }
+
+  const irCarta = () => {
+    if (paginaActual !== 'home') {
+      setPaginaActual('home')
+      window.setTimeout(() => {
+        document.getElementById('carta-digital')?.scrollIntoView({ behavior: 'smooth' })
+      }, 150)
+    } else {
+      document.getElementById('carta-digital')?.scrollIntoView({ behavior: 'smooth' })
     }
+    cerrarMenu()
   }
 
   return (
-    <header className="navbar">
-      <div className="navbar__shell glass">
-        <Link to="/" className="navbar__logo" onClick={cerrarMenu}>
-          Guachinche <span>El Realejo</span>
-        </Link>
+    <nav className="navbar-float glass" aria-label="Navegación principal">
+      <div className="navbar-float__inner">
+        <button type="button" className="navbar-brand" onClick={irInicio}>
+          EL REALEJO <span className="navbar-brand__dot">•</span> TASCAS
+        </button>
 
-        <div className="navbar__right">
-          <div
-            className={`navbar__status ${abierto ? 'navbar__status--open' : ''}`}
-            role="status"
-            aria-live="polite"
-          >
+        <div className="navbar-float__actions">
+          <div className="navbar-status-widget" role="status" aria-live="polite">
             <span
-              className={`navbar__dot ${abierto ? 'navbar__dot--open' : 'navbar__dot--closed'}`}
+              className={`navbar-status-widget__dot ${estaAbierto ? 'pulse-green' : ''}`}
+              style={{
+                backgroundColor: estaAbierto ? '#22c55e' : '#eab308',
+              }}
               aria-hidden="true"
             />
-            <span>{abierto ? 'Abierto' : 'Abrimos a las 12:00 / 19:30'}</span>
+            <span className="navbar-status-widget__text">
+              {estaAbierto ? 'Abierto Ahora' : 'Cerrado (Abre 12:00 / 19:30)'}
+            </span>
           </div>
 
-          <Link
-            to="/reservar"
-            className="btn btn--fill navbar__cta"
-            onClick={cerrarMenu}
-          >
-            Reservar Mesa
-          </Link>
+          <div className="navbar-float__links">
+            <button
+              type="button"
+              className={`navbar-nav-link ${paginaActual === 'home' ? 'navbar-nav-link--active' : ''}`}
+              onClick={irCarta}
+            >
+              Carta
+            </button>
+
+            <button
+              type="button"
+              className={`btn-premium ${paginaActual === 'reservas' ? 'navbar-cta--active' : ''}`}
+              onClick={irReservas}
+            >
+              Reservar Mesa
+            </button>
+          </div>
 
           <button
             type="button"
-            className="navbar__toggle"
+            className="navbar-float__toggle"
             aria-expanded={menuAbierto}
-            aria-controls="navbar-menu"
+            aria-controls="navbar-mobile-menu"
             aria-label={menuAbierto ? 'Cerrar menú' : 'Abrir menú'}
             onClick={() => setMenuAbierto((v) => !v)}
           >
-            <span className="navbar__toggle-line" />
-            <span className="navbar__toggle-line" />
-            <span className="navbar__toggle-line" />
+            <span />
+            <span />
+            <span />
           </button>
-
-          <nav
-            id="navbar-menu"
-            className={`navbar__nav ${menuAbierto ? 'navbar__nav--open' : ''}`}
-            aria-label="Navegación principal"
-          >
-            <ul className="navbar__links" role="list">
-              {ENLACES.map(({ to, label }) => (
-                <li key={to}>
-                  {to.includes('#') ? (
-                    <a
-                      href={to}
-                      className="navbar__link"
-                      onClick={(e) => {
-                        if (pathname === '/') return cerrarMenu()
-                        e.preventDefault()
-                        irInicioHash(to.replace('/', ''))
-                      }}
-                    >
-                      {label}
-                    </a>
-                  ) : (
-                    <Link to={to} className="navbar__link" onClick={cerrarMenu}>
-                      {label}
-                    </Link>
-                  )}
-                </li>
-              ))}
-              <li className="navbar__link-cta-mobile">
-                <Link to="/reservar" className="btn btn--fill btn--block" onClick={cerrarMenu}>
-                  Reservar Mesa
-                </Link>
-              </li>
-            </ul>
-          </nav>
         </div>
       </div>
 
       {menuAbierto && (
-        <button
-          type="button"
-          className="navbar__overlay"
-          aria-label="Cerrar menú"
-          onClick={cerrarMenu}
-        />
+        <>
+          <button
+            type="button"
+            className="navbar-float__overlay"
+            aria-label="Cerrar menú"
+            onClick={cerrarMenu}
+          />
+          <div id="navbar-mobile-menu" className="navbar-float__mobile glass">
+            <button type="button" className="navbar-nav-link" onClick={irCarta}>
+              Carta
+            </button>
+            <button type="button" className="btn-premium btn--block" onClick={irReservas}>
+              Reservar Mesa
+            </button>
+          </div>
+        </>
       )}
-    </header>
+    </nav>
   )
 }

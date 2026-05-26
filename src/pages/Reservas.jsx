@@ -1,46 +1,20 @@
-import { useId, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
 import {
-  LIMITE_MESAS_POR_TURNO,
-  TURNOS,
-  contarMesasOcupadas,
+  CONFIG_RESTAURANTE,
   generarLocalizador,
-  hayDisponibilidad,
-  insertarReserva,
-  mesasDisponibles,
-} from '../data/dbSimulada'
+  reservasOcupadasDB,
+} from '../data/db'
 
-const MENSAJE_DIA_CERRADO =
-  'Los lunes y martes las puertas permanecen cerradas: estamos en los viñedos y el equipo descansa. Elige otro día para visitarnos.'
+const MSG_DIA_CERRADO =
+  '🍷 ¡Los lunes y martes cerramos para atender las viñas y descansar el personal! Por favor, selecciona otro día.'
 
-const MENSAJE_SIN_AFORO =
-  '🔴 Lo sentimos, no quedan mesas disponibles para este turno. Por favor, selecciona otra hora o fecha.'
+const MSG_AFORO_COMPLETO =
+  '🔴 Lo sentimos, no quedan mesas libres para este turno. El aforo máximo de 30 mesas está completo.'
 
-const ESTADO_INICIAL = {
-  nombre: '',
-  telefono: '',
-  fecha: '',
-  turno: '',
-  mesas: '1',
-  personas: '2',
-  notas: '',
-}
-
-function parsearFechaLocal(valor) {
-  const [y, m, d] = valor.split('-').map(Number)
+/** Parsea YYYY-MM-DD en hora local (evita que getDay() falle por UTC). */
+function parsearFechaLocal(fechaStr) {
+  const [y, m, d] = fechaStr.split('-').map(Number)
   return new Date(y, m - 1, d)
-}
-
-function esDiaCerrado(fecha) {
-  const dia = fecha.getDay()
-  return dia === 1 || dia === 2
-}
-
-function validarFecha(valor) {
-  if (!valor) return { valido: false, mensaje: 'Selecciona una fecha para tu visita.' }
-  const fecha = parsearFechaLocal(valor)
-  if (esDiaCerrado(fecha)) return { valido: false, mensaje: MENSAJE_DIA_CERRADO }
-  return { valido: true, mensaje: '' }
 }
 
 function fechaMinimaHoy() {
@@ -48,356 +22,211 @@ function fechaMinimaHoy() {
   return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}-${String(h.getDate()).padStart(2, '0')}`
 }
 
-function formatearFecha(valor) {
-  return parsearFechaLocal(valor).toLocaleDateString('es-ES', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
-}
-
-function etiquetaTurno(turno) {
-  return turno === TURNOS.ALMUERZO ? 'Almuerzo (12:00 – 16:00)' : 'Cena (19:30 – 23:00)'
+function claveDB(fecha, turno) {
+  return `${fecha}-${turno}`
 }
 
 /**
- * Página exclusiva de reservas con verificación de aforo (30 mesas/turno).
- *
- * Flujo de disponibilidad:
- * 1. Usuario elige fecha + turno (+ mesas solicitadas).
- * 2. contarMesasOcupadas() consulta reservasDB filtrando por fecha y turno.
- * 3. Si ocupadas + mesasSolicitadas > 30 → bloqueo y alerta.
- * 4. Si hay hueco → INSERT simulado con insertarReserva() y pantalla de éxito.
+ * Página exclusiva de reservas.
+ * Intercepta lunes/martes y calcula aforo en tiempo real contra reservasOcupadasDB.
  */
-export default function Reservas() {
-  const idBase = useId()
-  const [datos, setDatos] = useState(ESTADO_INICIAL)
-  const [errorFecha, setErrorFecha] = useState('')
-  const [errorAforo, setErrorAforo] = useState('')
-  const [enviando, setEnviando] = useState(false)
-  const [confirmacion, setConfirmacion] = useState(null)
-  /** Fuerza re-render tras INSERT para refrescar contadores. */
-  const [versionBD, setVersionBD] = useState(0)
+export default function Reservas({ setPaginaActual }) {
+  const [fecha, setFecha] = useState('')
+  const [turno, setTurno] = useState('almuerzo')
+  const [nombre, setNombre] = useState('')
+  const [errorMsg, setErrorMsg] = useState('')
+  const [exito, setExito] = useState(false)
+  const [localizador, setLocalizador] = useState('')
+  const [mesasLibres, setMesasLibres] = useState(CONFIG_RESTAURANTE.TOTAL_MESAS_MAX)
 
-  const mesasSolicitadas = Number(datos.mesas) || 1
+  /**
+   * Valida día de descanso y consulta aforo en reservasOcupadasDB.
+   * Clave: `${fecha}-${turno}` → mesas ocupadas
+   */
+  const verificarDisponibilidad = (selectedDate, selectedTurn) => {
+    setErrorMsg('')
 
-  /** Consulta aforo en BD simulada (depende de versionBD tras cada INSERT). */
-  const aforo = useMemo(() => {
-    void versionBD
-    if (!datos.fecha || !datos.turno) {
-      return { ocupadas: 0, libres: LIMITE_MESAS_POR_TURNO, completo: false }
+    if (!selectedDate) {
+      setMesasLibres(CONFIG_RESTAURANTE.TOTAL_MESAS_MAX)
+      return
     }
-    const ocupadas = contarMesasOcupadas(datos.fecha, datos.turno)
-    const libres = mesasDisponibles(datos.fecha, datos.turno)
-    const completo = !hayDisponibilidad(datos.fecha, datos.turno, mesasSolicitadas)
-    return { ocupadas, libres, completo }
-  }, [datos.fecha, datos.turno, mesasSolicitadas, versionBD])
 
-  const fechaInvalida = Boolean(errorFecha)
-  const sinDisponibilidad = Boolean(
-    datos.fecha && datos.turno && !fechaInvalida && aforo.completo,
-  )
-
-  const validarYSetearFecha = (valor) => {
-    const { valido, mensaje } = validarFecha(valor)
-    setErrorFecha(valido ? '' : mensaje)
-    return valido
-  }
-
-  const revisarAforo = (fecha, turno, mesas) => {
-    if (!fecha || !turno) {
-      setErrorAforo('')
-      return true
+    // 1. Lunes (1) y martes (2) — cierre por viñedos y descanso
+    const diaSemana = parsearFechaLocal(selectedDate).getDay()
+    if (diaSemana === 1 || diaSemana === 2) {
+      setErrorMsg(MSG_DIA_CERRADO)
+      setMesasLibres(0)
+      return
     }
-    const disponible = hayDisponibilidad(fecha, turno, Number(mesas) || 1)
-    setErrorAforo(disponible ? '' : MENSAJE_SIN_AFORO)
-    return disponible
-  }
 
-  const handleChange = (e) => {
-    const { name, value } = e.target
-    const siguiente = { ...datos, [name]: value }
-    setDatos(siguiente)
-    setConfirmacion(null)
+    // 2. Aforo real desde la BD simulada
+    const keyDB = claveDB(selectedDate, selectedTurn)
+    const mesasOcupadas = reservasOcupadasDB[keyDB] || 0
+    const libres = CONFIG_RESTAURANTE.TOTAL_MESAS_MAX - mesasOcupadas
 
-    if (name === 'fecha') {
-      validarYSetearFecha(value)
-      revisarAforo(value, siguiente.turno, siguiente.mesas)
-    } else if (name === 'turno' || name === 'mesas') {
-      revisarAforo(siguiente.fecha, siguiente.turno, siguiente.mesas)
+    setMesasLibres(libres)
+
+    if (libres <= 0) {
+      setErrorMsg(MSG_AFORO_COMPLETO)
     }
   }
 
-  const handleSubmit = (e) => {
+  const handleFechaChange = (e) => {
+    const valor = e.target.value
+    setFecha(valor)
+    verificarDisponibilidad(valor, turno)
+  }
+
+  const handleTurnoChange = (e) => {
+    const valor = e.target.value
+    setTurno(valor)
+    verificarDisponibilidad(fecha, valor)
+  }
+
+  const ejecutarReserva = (e) => {
     e.preventDefault()
+    if (!fecha || !nombre.trim()) return
 
-    if (!validarYSetearFecha(datos.fecha)) return
-    if (!datos.turno) return
-    if (!revisarAforo(datos.fecha, datos.turno, datos.mesas)) return
-    if (!datos.nombre.trim() || !datos.telefono.trim()) return
+    // Revalidación síncrona antes del INSERT (evita estado React desactualizado)
+    const diaSemana = parsearFechaLocal(fecha).getDay()
+    if (diaSemana === 1 || diaSemana === 2) {
+      setErrorMsg(MSG_DIA_CERRADO)
+      return
+    }
 
-    setEnviando(true)
+    const keyDB = claveDB(fecha, turno)
+    const ocupadas = reservasOcupadasDB[keyDB] || 0
+    const libres = CONFIG_RESTAURANTE.TOTAL_MESAS_MAX - ocupadas
 
-    window.setTimeout(() => {
-      const localizador = generarLocalizador()
+    if (libres <= 0) {
+      setErrorMsg(MSG_AFORO_COMPLETO)
+      setMesasLibres(0)
+      return
+    }
 
-      insertarReserva({
-        fecha: datos.fecha,
-        turno: datos.turno,
-        mesas: mesasSolicitadas,
-        nombre: datos.nombre.trim(),
-        telefono: datos.telefono.trim(),
-        personas: Number(datos.personas),
-        notas: datos.notas.trim(),
-        localizador,
-      })
+    // Simulación INSERT en base de datos (+1 mesa)
+    if (reservasOcupadasDB[keyDB]) {
+      reservasOcupadasDB[keyDB] += 1
+    } else {
+      reservasOcupadasDB[keyDB] = 1
+    }
 
-      setConfirmacion({
-        localizador,
-        ...datos,
-      })
-      setDatos(ESTADO_INICIAL)
-      setErrorFecha('')
-      setErrorAforo('')
-      setVersionBD((v) => v + 1)
-      setEnviando(false)
-    }, 700)
+    const codigo = generarLocalizador()
+    console.log('[BD Simulada] INSERT reserva:', {
+      keyDB,
+      nombre: nombre.trim(),
+      turno,
+      mesasOcupadas: reservasOcupadasDB[keyDB],
+      localizador: codigo,
+    })
+
+    setLocalizador(codigo)
+    setExito(true)
   }
 
-  const nuevaReserva = () => {
-    setConfirmacion(null)
-    setDatos(ESTADO_INICIAL)
-    setErrorFecha('')
-    setErrorAforo('')
+  const reiniciar = () => {
+    setExito(false)
+    setFecha('')
+    setTurno('almuerzo')
+    setNombre('')
+    setErrorMsg('')
+    setLocalizador('')
+    setMesasLibres(CONFIG_RESTAURANTE.TOTAL_MESAS_MAX)
   }
 
-  if (confirmacion) {
-    return (
-      <div className="reservas-page container">
-        <header className="booking-section__header">
-          <span className="badge">Confirmado</span>
-          <h1 className="section-title">Reserva registrada</h1>
-        </header>
-
-        <div className="booking-card card booking-success">
-          <div className="booking-success__icon" aria-hidden="true">
-            ✓
-          </div>
-          <p className="booking-success__locator">{confirmacion.localizador}</p>
-          <h3>¡Tu mesa está solicitada!</h3>
-          <p className="text-muted">
-            Guarda tu localizador. Te llamaremos para confirmar los últimos detalles.
-          </p>
-
-          <div className="booking-success__summary">
-            <dl>
-              <div>
-                <dt>Localizador</dt>
-                <dd>{confirmacion.localizador}</dd>
-              </div>
-              <div>
-                <dt>Nombre</dt>
-                <dd>{confirmacion.nombre}</dd>
-              </div>
-              <div>
-                <dt>Fecha</dt>
-                <dd>{formatearFecha(confirmacion.fecha)}</dd>
-              </div>
-              <div>
-                <dt>Turno</dt>
-                <dd>{etiquetaTurno(confirmacion.turno)}</dd>
-              </div>
-              <div>
-                <dt>Mesas</dt>
-                <dd>{confirmacion.mesas}</dd>
-              </div>
-              <div>
-                <dt>Comensales</dt>
-                <dd>{confirmacion.personas}</dd>
-              </div>
-            </dl>
-          </div>
-
-          <button type="button" className="btn btn--outline btn--block" onClick={nuevaReserva}>
-            Hacer otra reserva
-          </button>
-          <Link to="/" className="btn btn--fill btn--block">
-            Volver al inicio
-          </Link>
-        </div>
-      </div>
-    )
-  }
+  const turnoLabel = turno === 'almuerzo' ? 'Almuerzo' : 'Cena'
 
   return (
-    <div className="reservas-page container">
-      <header className="booking-section__header">
-        <span className="badge">Reservas</span>
-        <h1 className="section-title">Gestión de mesas</h1>
-        <p className="text-muted">
-          Aforo máximo: {LIMITE_MESAS_POR_TURNO} mesas por turno (Almuerzo o Cena).
+    <div className="reservas-page">
+      <div className="reservas-card">
+        <h2 className="reservas-card__title">Reserva tu Mesa</h2>
+        <p className="reservas-card__subtitle">
+          Aforo limitado a {CONFIG_RESTAURANTE.TOTAL_MESAS_MAX} mesas por turno.
         </p>
-      </header>
 
-      {/* Indicador de aforo en tiempo real */}
-      {datos.fecha && datos.turno && !fechaInvalida && (
-        <div
-          className={`aforo-meter card ${sinDisponibilidad ? 'aforo-meter--full' : ''}`}
-          role="status"
-          aria-live="polite"
-        >
-          <div className="aforo-meter__header">
-            <span className="text-muted">Disponibilidad</span>
-            <span className="aforo-meter__count">
-              {aforo.ocupadas} / {LIMITE_MESAS_POR_TURNO} mesas ocupadas
-            </span>
-          </div>
-          <div className="aforo-meter__bar">
-            <div
-              className="aforo-meter__fill"
-              style={{ width: `${(aforo.ocupadas / LIMITE_MESAS_POR_TURNO) * 100}%` }}
-            />
-          </div>
-          <p className="aforo-meter__hint">
-            {sinDisponibilidad
-              ? 'Turno completo para la selección actual'
-              : `${aforo.libres} mesa${aforo.libres === 1 ? '' : 's'} libre${aforo.libres === 1 ? '' : 's'}`}
-          </p>
-        </div>
-      )}
-
-      <div className="booking-card card">
-        <form className="booking-form" onSubmit={handleSubmit} noValidate>
-          <div className="booking-field">
-            <label htmlFor={`${idBase}-fecha`}>Fecha de visita</label>
-            <input
-              id={`${idBase}-fecha`}
-              name="fecha"
-              type="date"
-              required
-              min={fechaMinimaHoy()}
-              value={datos.fecha}
-              onChange={handleChange}
-              disabled={enviando}
-              aria-invalid={fechaInvalida}
-              className={fechaInvalida ? 'booking-field__input--error' : ''}
-            />
-            {fechaInvalida && (
-              <p className="booking-field__error" role="alert">
-                {errorFecha}
-              </p>
-            )}
-          </div>
-
-          <div className="booking-field">
-            <label htmlFor={`${idBase}-turno`}>Turno</label>
-            <select
-              id={`${idBase}-turno`}
-              name="turno"
-              required
-              value={datos.turno}
-              onChange={handleChange}
-              disabled={enviando || fechaInvalida}
-            >
-              <option value="">Selecciona un turno</option>
-              <option value={TURNOS.ALMUERZO}>Almuerzo (12:00 – 16:00)</option>
-              <option value={TURNOS.CENA}>Cena (19:30 – 23:00)</option>
-            </select>
-          </div>
-
-          <div className="booking-field">
-            <label htmlFor={`${idBase}-mesas`}>Mesas a reservar</label>
-            <select
-              id={`${idBase}-mesas`}
-              name="mesas"
-              value={datos.mesas}
-              onChange={handleChange}
-              disabled={enviando}
-            >
-              {[1, 2, 3, 4, 5].map((n) => (
-                <option key={n} value={String(n)}>
-                  {n} {n === 1 ? 'mesa' : 'mesas'}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {sinDisponibilidad && (
-            <p className="booking-field__error booking-field__error--aforo" role="alert">
-              {errorAforo}
+        {exito ? (
+          <div className="reservas-exito">
+            <h3 className="reservas-exito__titulo">¡Reserva Confirmada!</h3>
+            <p className="reservas-exito__texto">
+              Todo listo, {nombre}. Tu mesa está guardada para el turno de {turnoLabel}.
             </p>
-          )}
-
-          <div className="booking-field">
-            <label htmlFor={`${idBase}-nombre`}>Nombre completo</label>
-            <input
-              id={`${idBase}-nombre`}
-              name="nombre"
-              type="text"
-              required
-              autoComplete="name"
-              value={datos.nombre}
-              onChange={handleChange}
-              disabled={enviando}
-            />
+            <div className="reservas-exito__locator">
+              LOCALIZADOR: {localizador}
+            </div>
+            <div className="reservas-exito__actions">
+              <button type="button" className="btn-premium btn--block" onClick={reiniciar}>
+                Nueva reserva
+              </button>
+              <button
+                type="button"
+                className="btn-premium btn-premium--outline btn--block"
+                onClick={() => setPaginaActual?.('home')}
+              >
+                Volver al inicio
+              </button>
+            </div>
           </div>
+        ) : (
+          <form className="reservas-form" onSubmit={ejecutarReserva} noValidate>
+            <div className="reservas-field">
+              <label htmlFor="reserva-nombre">Nombre Titular</label>
+              <input
+                id="reserva-nombre"
+                type="text"
+                required
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                placeholder="Ej. Samuel Perera"
+              />
+            </div>
 
-          <div className="booking-field">
-            <label htmlFor={`${idBase}-telefono`}>Teléfono</label>
-            <input
-              id={`${idBase}-telefono`}
-              name="telefono"
-              type="tel"
-              required
-              autoComplete="tel"
-              placeholder="+34 600 000 000"
-              value={datos.telefono}
-              onChange={handleChange}
-              disabled={enviando}
-            />
-          </div>
+            <div className="reservas-row">
+              <div className="reservas-field">
+                <label htmlFor="reserva-fecha">Fecha</label>
+                <input
+                  id="reserva-fecha"
+                  type="date"
+                  required
+                  min={fechaMinimaHoy()}
+                  value={fecha}
+                  onChange={handleFechaChange}
+                  aria-invalid={Boolean(errorMsg)}
+                />
+              </div>
+              <div className="reservas-field">
+                <label htmlFor="reserva-turno">Turno</label>
+                <select id="reserva-turno" value={turno} onChange={handleTurnoChange}>
+                  <option value="almuerzo">Almuerzo (12:00 - 16:00)</option>
+                  <option value="cena">Cena (19:30 - 23:00)</option>
+                </select>
+              </div>
+            </div>
 
-          <div className="booking-field">
-            <label htmlFor={`${idBase}-personas`}>Comensales</label>
-            <select
-              id={`${idBase}-personas`}
-              name="personas"
-              value={datos.personas}
-              onChange={handleChange}
-              disabled={enviando}
+            {/* Panel aforo en tiempo real */}
+            {fecha && !errorMsg && (
+              <div className="reservas-aforo-panel" role="status" aria-live="polite">
+                Mesas disponibles para este turno:{' '}
+                <strong>
+                  {mesasLibres} de {CONFIG_RESTAURANTE.TOTAL_MESAS_MAX}
+                </strong>
+              </div>
+            )}
+
+            {errorMsg && (
+              <div className="reservas-alert" role="alert">
+                {errorMsg}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="btn-premium btn--block"
+              disabled={Boolean(errorMsg) || !fecha}
             >
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-                <option key={n} value={String(n)}>
-                  {n} {n === 1 ? 'persona' : 'personas'}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="booking-field">
-            <label htmlFor={`${idBase}-notas`}>
-              Notas <span className="text-muted">(opcional)</span>
-            </label>
-            <textarea
-              id={`${idBase}-notas`}
-              name="notas"
-              rows={3}
-              placeholder="Alergias, celebración..."
-              value={datos.notas}
-              onChange={handleChange}
-              disabled={enviando}
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="btn btn--fill btn--block"
-            disabled={enviando || fechaInvalida || sinDisponibilidad || !datos.turno}
-          >
-            {enviando ? 'Procesando…' : 'Confirmar reserva'}
-          </button>
-        </form>
+              Confirmar Reserva de Mesa
+            </button>
+          </form>
+        )}
       </div>
     </div>
   )
