@@ -6,9 +6,6 @@
  * - reservasStorage: lectura/escritura persistente del aforo
  */
 
-export { CONOCIMIENTO_LA_PALMA } from './chatbotConocimientoLaPalma'
-export { CHATBOT_SYSTEM_PROMPT } from './chatbotSystemPrompt'
-
 export {
   CONFIG_RESTAURANTE,
   LIMITE_MESAS_POR_TURNO,

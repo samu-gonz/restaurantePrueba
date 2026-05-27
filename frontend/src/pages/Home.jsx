@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import {
   IMAGEN_CARTA_FALLBACK,
   IMAGEN_HERO_BODEGA,
-  menuData,
 } from '../data/db'
 import './Home.css'
 
@@ -167,11 +166,49 @@ function TarjetaPlato({ plato }) {
 
 export default function Home({ setPaginaActual }) {
   const [categoria, setCategoria] = useState('todos')
+  const [menu, setMenu] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [errorMenu, setErrorMenu] = useState('')
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    async function cargarMenu() {
+      try {
+        setLoading(true)
+        setErrorMenu('')
+
+        const response = await fetch('http://localhost:5000/api/menu', {
+          signal: controller.signal,
+        })
+
+        if (!response.ok) {
+          throw new Error('No se pudo cargar la carta desde el servidor.')
+        }
+
+        const data = await response.json()
+        setMenu(Array.isArray(data) ? data : [])
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          setErrorMenu('No pudimos cargar la carta ahora mismo. Inténtalo de nuevo.')
+          setMenu([])
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false)
+        }
+      }
+    }
+
+    cargarMenu()
+
+    return () => controller.abort()
+  }, [])
 
   const platosFiltrados =
     categoria === 'todos'
-      ? menuData
-      : menuData.filter((plato) => plato.categoria === categoria)
+      ? menu
+      : menu.filter((plato) => plato.categoria === categoria)
 
   const irCarta = () => {
     document.getElementById('carta-digital')?.scrollIntoView({ behavior: 'smooth' })
@@ -271,13 +308,21 @@ export default function Home({ setPaginaActual }) {
           ))}
         </div>
 
-        <div className="home-carta-grid">
-          {platosFiltrados.map((plato) => (
-            <TarjetaPlato key={plato.id} plato={plato} />
-          ))}
-        </div>
+        {loading ? (
+          <p className="carta-digital__empty text-muted">Cargando carta del servidor…</p>
+        ) : errorMenu ? (
+          <div className="reservas-alert" role="alert">
+            {errorMenu}
+          </div>
+        ) : (
+          <div className="home-carta-grid">
+            {platosFiltrados.map((plato) => (
+              <TarjetaPlato key={plato.id} plato={plato} />
+            ))}
+          </div>
+        )}
 
-        {platosFiltrados.length === 0 && (
+        {!loading && !errorMenu && platosFiltrados.length === 0 && (
           <p className="carta-digital__empty text-muted">
             No hay platos en esta categoría.
           </p>
