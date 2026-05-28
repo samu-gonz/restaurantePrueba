@@ -1,8 +1,5 @@
 import { useEffect, useState } from 'react'
-import {
-  IMAGEN_CARTA_FALLBACK,
-  IMAGEN_HERO_BODEGA,
-} from '../data/db'
+import { IMAGEN_CARTA_FALLBACK } from '../data/db'
 import './Home.css'
 
 /* ── Tokens visuales ─────────────────────────────────────────────────────── */
@@ -22,6 +19,41 @@ const CATEGORIAS = [
   { id: 'entrantes', label: 'Entrantes' },
   { id: 'carnes', label: 'Carnes' },
   { id: 'postres', label: 'Postres' },
+]
+
+const HERO_CARRUSEL_INTERVALO_MS = 4000
+const COLOR_ACENTO_VINO = '#9B111E'
+
+/** Imágenes premium Pexels — sin hotlinking agresivo en localhost */
+const HERO_CARRUSEL_IMAGENES = [
+  {
+    id: 'bodega',
+    src: 'https://images.pexels.com/photos/340592/pexels-photo-340592.jpeg?auto=compress&cs=tinysrgb&w=1600&h=900&fit=crop',
+    alt: 'Barricas de roble en bodega oscura',
+    label: 'Nuestro espacio',
+    title: 'El lagar de El Realejo',
+  },
+  {
+    id: 'carne',
+    src: 'https://images.pexels.com/photos/361184/pexels-photo-361184.jpeg?auto=compress&cs=tinysrgb&w=1600&h=900&fit=crop',
+    alt: 'Carne a la parrilla con guarnición rústica',
+    label: 'De la brasa',
+    title: 'Carne con alma canaria',
+  },
+  {
+    id: 'vino',
+    src: 'https://images.pexels.com/photos/1283219/pexels-photo-1283219.jpeg?auto=compress&cs=tinysrgb&w=1600&h=900&fit=crop',
+    alt: 'Copa de vino tinto en ambiente íntimo',
+    label: 'Vino de cosecha',
+    title: 'Listán de nuestra tierra',
+  },
+  {
+    id: 'viniedo',
+    src: 'https://images.pexels.com/photos/3127638/pexels-photo-3127638.jpeg?auto=compress&cs=tinysrgb&w=1600&h=900&fit=crop',
+    alt: 'Viñedos al atardecer',
+    label: 'Origen',
+    title: 'Sabor de la tierra',
+  },
 ]
 
 /** Contenedor superior de imagen — alto fijo, recorte uniforme */
@@ -101,13 +133,88 @@ const estiloAlergenosPlato = {
   letterSpacing: '0.02em',
 }
 
-const estiloHeroImagen = {
-  width: '100%',
-  height: '100%',
-  minHeight: '480px',
-  objectFit: 'cover',
-  objectPosition: 'center',
-  display: 'block',
+/* ── Carrusel panorámico del Hero ────────────────────────────────────────── */
+
+function HeroCarruselPanoramico() {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [tickAutoplay, setTickAutoplay] = useState(0)
+
+  const total = HERO_CARRUSEL_IMAGENES.length
+  const slideActivo = HERO_CARRUSEL_IMAGENES[currentImageIndex]
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % total)
+    }, HERO_CARRUSEL_INTERVALO_MS)
+
+    return () => window.clearInterval(intervalId)
+  }, [tickAutoplay, total])
+
+  const irASlide = (index) => {
+    setCurrentImageIndex(index)
+    setTickAutoplay((prev) => prev + 1)
+  }
+
+  return (
+    <div
+      className="home-hero-carousel"
+      role="region"
+      aria-roledescription="carrusel"
+      aria-label="Galería visual del guachinche"
+    >
+      <div className="home-hero-carousel__viewport">
+        {HERO_CARRUSEL_IMAGENES.map((imagen, index) => (
+          <img
+            key={imagen.id}
+            src={imagen.src}
+            alt={imagen.alt}
+            className={
+              index === currentImageIndex
+                ? 'home-hero-carousel__slide is-active'
+                : 'home-hero-carousel__slide'
+            }
+            fetchPriority={index === 0 ? 'high' : 'low'}
+            decoding="async"
+            draggable={false}
+          />
+        ))}
+
+        <div className="home-hero-carousel__gradient" aria-hidden="true" />
+
+        <div className="home-hero-carousel__caption">
+          <p className="home-hero-carousel__caption-label">{slideActivo.label}</p>
+          <p className="home-hero-carousel__caption-title">{slideActivo.title}</p>
+        </div>
+
+        <div
+          className="home-hero-carousel__dots"
+          role="tablist"
+          aria-label="Seleccionar imagen del carrusel"
+        >
+          {HERO_CARRUSEL_IMAGENES.map((imagen, index) => (
+            <button
+              key={imagen.id}
+              type="button"
+              role="tab"
+              aria-selected={index === currentImageIndex}
+              aria-label={`Ver imagen ${index + 1}: ${imagen.title}`}
+              className={
+                index === currentImageIndex
+                  ? 'home-hero-carousel__dot is-active'
+                  : 'home-hero-carousel__dot'
+              }
+              style={
+                index === currentImageIndex
+                  ? { backgroundColor: COLOR_ACENTO_VINO }
+                  : undefined
+              }
+              onClick={() => irASlide(index)}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 /* ── Imagen con fallback si falla la carga ───────────────────────────────── */
@@ -216,46 +323,36 @@ export default function Home({ setPaginaActual }) {
 
   return (
     <div className="home">
-      {/* Hero */}
-      <section className="home-hero" aria-labelledby="home-hero-title">
-        <div className="home-hero__content">
-          <h1 id="home-hero-title" className="home-hero__title">
-            Sabor de la tierra.
-            <br />
-            <span className="home-hero__accent">Tradición moderna.</span>
-          </h1>
-          <p className="home-hero__desc">
-            Vino de nuestra cosecha en el norte de Tenerife y cocina canaria con
-            mirada contemporánea.
-          </p>
-          <div className="home-hero__actions">
-            <button type="button" className="btn-premium" onClick={irCarta}>
-              Explorar Carta
-            </button>
-            <button
-              type="button"
-              className="btn-premium btn-premium--outline"
-              onClick={() => setPaginaActual?.('reservas')}
-            >
-              Asegurar Mesa
-            </button>
-          </div>
-        </div>
+      {/* Hero — carrusel panorámico + contenido */}
+      <section
+        id="galeria-lagar"
+        className="home-hero home-hero--carousel"
+        aria-labelledby="home-hero-title"
+      >
+        <HeroCarruselPanoramico />
 
-        {/* Columna visual: visible en desktop, oculta en móvil */}
-        <div className="home-hero__visual-col" id="galeria-lagar">
-          <div className="home-hero__bodega-wrap" role="img" aria-label="Bodega con barricas">
-            <img
-              src={IMAGEN_HERO_BODEGA}
-              alt=""
-              fetchPriority="high"
-              decoding="async"
-              style={estiloHeroImagen}
-            />
-            <div className="home-hero__bodega-gradient" aria-hidden="true" />
-            <div className="home-hero__bodega-caption">
-              <p className="home-hero__bodega-label">Nuestro espacio</p>
-              <p className="home-hero__bodega-title">El lagar de El Realejo</p>
+        <div className="home-hero__content-wrap">
+          <div className="home-hero__content">
+            <h1 id="home-hero-title" className="home-hero__title">
+              Sabor de la tierra.
+              <br />
+              <span className="home-hero__accent">Tradición moderna.</span>
+            </h1>
+            <p className="home-hero__desc">
+              Vino de nuestra cosecha en el norte de Tenerife y cocina canaria con
+              mirada contemporánea.
+            </p>
+            <div className="home-hero__actions">
+              <button type="button" className="btn-premium" onClick={irCarta}>
+                Explorar Carta
+              </button>
+              <button
+                type="button"
+                className="btn-premium btn-premium--outline"
+                onClick={() => setPaginaActual?.('reservas')}
+              >
+                Asegurar Mesa
+              </button>
             </div>
           </div>
         </div>

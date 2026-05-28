@@ -39,6 +39,20 @@ function claveAforo(fecha, turno) {
   return `${fecha}-${turno}`
 }
 
+function normalizarTurno(turno) {
+  const turnoNormalizado = String(turno ?? '').toLowerCase()
+  if (turnoNormalizado !== 'almuerzo' && turnoNormalizado !== 'cena') {
+    return null
+  }
+  return turnoNormalizado
+}
+
+function calcularEstadoAforo(mesasLibres) {
+  if (mesasLibres <= 0) return 'completo'
+  if (mesasLibres < 5) return 'ultimas_plazas'
+  return 'disponible'
+}
+
 function generarLocalizador() {
   const year = new Date().getFullYear()
   const sufijo = Math.random().toString(36).slice(2, 6).toUpperCase()
@@ -52,6 +66,37 @@ app.get('/api/health', (_req, res) => {
 // GET /api/menu -> devuelve toda la carta
 app.get('/api/menu', (_req, res) => {
   res.json(menuData)
+})
+
+// GET /api/disponibilidad?fecha=YYYY-MM-DD&turno=almuerzo|cena
+app.get('/api/disponibilidad', (req, res) => {
+  const fecha = String(req.query.fecha ?? '')
+  const turno = normalizarTurno(req.query.turno)
+
+  if (!fecha || !turno) {
+    return res.status(400).json({
+      ok: false,
+      error: 'Parámetros inválidos. Usa fecha (YYYY-MM-DD) y turno (almuerzo|cena).',
+    })
+  }
+
+  const cerrrado = esDiaCerrado(fecha)
+  if (cerrrado === null) {
+    return res.status(400).json({
+      ok: false,
+      error: 'Fecha inválida. Usa el formato YYYY-MM-DD.',
+    })
+  }
+
+  const limite = CONFIG_RESTAURANTE.TOTAL_MESAS_MAX ?? 30
+  const ocupadas = aforoPorTurno.get(claveAforo(fecha, turno)) ?? 0
+  const libres = Math.max(0, limite - ocupadas)
+
+  return res.json({
+    mesasOcupadas: ocupadas,
+    mesasLibres: libres,
+    estado: calcularEstadoAforo(libres),
+  })
 })
 
 // POST /api/reservas
@@ -81,8 +126,8 @@ app.post('/api/reservas', (req, res) => {
     })
   }
 
-  const turnoNormalizado = String(turno).toLowerCase()
-  if (turnoNormalizado !== 'almuerzo' && turnoNormalizado !== 'cena') {
+  const turnoNormalizado = normalizarTurno(turno)
+  if (!turnoNormalizado) {
     return res.status(400).json({
       ok: false,
       error: 'Turno inválido. Usa: almuerzo o cena.',

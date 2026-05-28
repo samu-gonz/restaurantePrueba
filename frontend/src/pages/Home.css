@@ -1,27 +1,164 @@
-/* Home — layout carta y hero responsivo */
+/* Home — Hero carrusel panorámico, carta y layout */
 
-.home-hero__visual-col {
-  display: none;
+/* ── Hero con carrusel full-bleed ─────────────────────────────────────────── */
+
+.home-hero--carousel {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  max-width: none;
+  min-height: auto;
+  padding: 0;
+  margin-bottom: 0;
+}
+
+.home-hero-carousel {
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.home-hero-carousel__viewport {
+  position: relative;
+  width: 100%;
+  height: clamp(220px, 42vw, 520px);
+  min-height: 220px;
+  overflow: hidden;
+  background: #0d0d0d;
+  border-bottom: 1px solid #262626;
+}
+
+.home-hero-carousel__slide {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: 0;
+  transition: opacity 0.8s ease-in-out;
+  pointer-events: none;
+  user-select: none;
+}
+
+.home-hero-carousel__slide.is-active {
+  opacity: 1;
+  z-index: 1;
+}
+
+.home-hero-carousel__gradient {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    rgba(13, 13, 13, 0.95) 0%,
+    rgba(13, 13, 13, 0.5) 40%,
+    rgba(13, 13, 13, 0.2) 100%
+  );
+}
+
+.home-hero-carousel__caption {
+  position: absolute;
+  bottom: 3.25rem;
+  left: clamp(1rem, 4vw, 2.5rem);
+  right: clamp(1rem, 4vw, 2.5rem);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.home-hero-carousel__caption-label {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #9b111e;
+}
+
+.home-hero-carousel__caption-title {
+  margin: 0.35rem 0 0;
+  font-family: var(--font-display, Georgia, serif);
+  font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+  color: #f5f5f5;
+  transition: opacity 0.5s ease;
+}
+
+.home-hero-carousel__dots {
+  position: absolute;
+  bottom: 1.15rem;
+  left: 50%;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transform: translateX(-50%);
+}
+
+.home-hero-carousel__dot {
+  width: 2rem;
+  height: 3px;
+  padding: 0;
+  border: none;
+  border-radius: 2px;
+  background: rgba(245, 245, 245, 0.28);
+  cursor: pointer;
+  transition:
+    background-color 0.35s ease,
+    opacity 0.35s ease,
+    transform 0.25s ease,
+    width 0.25s ease;
+}
+
+.home-hero-carousel__dot:hover {
+  background: rgba(245, 245, 245, 0.5);
+}
+
+.home-hero-carousel__dot.is-active {
+  width: 2.5rem;
+  opacity: 1;
+  box-shadow: 0 0 12px rgba(155, 17, 30, 0.55);
+}
+
+.home-hero__content-wrap {
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
+  padding: 2rem clamp(1rem, 4vw, 2rem) 3rem;
 }
 
 @media (min-width: 64rem) {
-  .home-hero__visual-col {
-    display: block;
-    flex: 1 1 42%;
-    min-width: 320px;
+  .home-hero--carousel {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
+
+  .home-hero-carousel {
+    flex: 1 1 58%;
+    order: 2;
+  }
+
+  .home-hero-carousel__viewport {
+    height: 100%;
+    min-height: 480px;
+    border-bottom: none;
+    border-left: 1px solid #262626;
+    border-radius: 0 0 0 24px;
+  }
+
+  .home-hero__content-wrap {
+    flex: 1 1 38%;
+    order: 1;
+    display: flex;
+    align-items: center;
+    padding: 3rem 2rem;
   }
 }
 
-.home-hero__bodega-wrap {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  min-height: 480px;
-  border-radius: 24px;
-  overflow: hidden;
-  border: 1px solid var(--border-color);
-  background-color: #161616;
-}
+/* ── Carta ───────────────────────────────────────────────────────────────── */
 
 .home-carta-grid {
   display: grid;
@@ -42,7 +179,6 @@
   }
 }
 
-/* Tarjeta plato — hover zoom en imagen */
 .home-plato-card {
   display: flex;
   flex-direction: column;

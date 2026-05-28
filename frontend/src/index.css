@@ -807,7 +807,7 @@ textarea:focus {
   width: 100%;
 }
 
-.home-hero {
+.home-hero:not(.home-hero--carousel) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1434,6 +1434,49 @@ textarea:focus {
   margin-top: 0.35rem;
   font-size: 0.75rem;
   opacity: 0.7;
+}
+
+.reservas-aforo-widget {
+  padding: 0.95rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  background: #1b1b1b;
+}
+
+.reservas-aforo-widget__texto {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: #e5e5e5;
+}
+
+.reservas-aforo-widget--disponible {
+  border-color: rgba(34, 197, 94, 0.38);
+  background: rgba(22, 22, 22, 0.95);
+}
+
+.reservas-aforo-widget--ultimas_plazas {
+  border-color: rgba(251, 146, 60, 0.6);
+  background: rgba(40, 27, 16, 0.45);
+}
+
+.reservas-aforo-widget--completo {
+  border-color: #525252;
+  background: rgba(28, 28, 28, 0.95);
+}
+
+.reservas-aforo-widget__texto--blink {
+  animation: reservas-warning-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes reservas-warning-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.65;
+  }
 }
 
 .reservas-card--loading {

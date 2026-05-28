@@ -34,6 +34,7 @@ export default function Reservas({ setPaginaActual }) {
   const [turno, setTurno] = useState('almuerzo')
   const [errorMsg, setErrorMsg] = useState('')
   const [mesasLibres, setMesasLibres] = useState(null)
+  const [statusAforo, setStatusAforo] = useState(null)
   const [exito, setExito] = useState(null)
   const [enviando, setEnviando] = useState(false)
 
@@ -43,17 +44,60 @@ export default function Reservas({ setPaginaActual }) {
       setErrorMsg('')
       if (!fechaSel) {
         setMesasLibres(null)
+        setStatusAforo(null)
         return false
       }
 
       if (esDiaCerrado(fechaSel)) {
         setErrorMsg(MSG_CIERRE)
+        setStatusAforo(null)
         return false
       }
       return true
     },
     [],
   )
+
+  useEffect(() => {
+    if (!fecha || !turno) {
+      setStatusAforo(null)
+      return
+    }
+
+    if (!validarDisponibilidad(fecha)) return
+
+    const controller = new AbortController()
+
+    async function handleCheckAforo() {
+      try {
+        const params = new URLSearchParams({ fecha, turno })
+        const response = await fetch(`${API_BASE_URL}/api/disponibilidad?${params.toString()}`, {
+          signal: controller.signal,
+        })
+        const data = await response.json().catch(() => ({}))
+
+        if (!response.ok) {
+          throw new Error(data?.error || 'No se pudo consultar el aforo en tiempo real.')
+        }
+
+        setStatusAforo(data)
+        setMesasLibres(data.mesasLibres)
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          setStatusAforo(null)
+          setMesasLibres(null)
+          setErrorMsg(
+            error.message ||
+              'No pudimos consultar disponibilidad en este momento. Revisa tu conexión.',
+          )
+        }
+      }
+    }
+
+    handleCheckAforo()
+
+    return () => controller.abort()
+  }, [fecha, turno, validarDisponibilidad])
 
   useEffect(() => {
     if (!fecha) return
@@ -64,6 +108,7 @@ export default function Reservas({ setPaginaActual }) {
     setFecha(e.target.value)
     setExito(null)
     setMesasLibres(null)
+    setStatusAforo(null)
     validarDisponibilidad(e.target.value)
   }
 
@@ -71,6 +116,7 @@ export default function Reservas({ setPaginaActual }) {
     setTurno(e.target.value)
     setExito(null)
     setMesasLibres(null)
+    setStatusAforo(null)
   }
 
   const ejecutarReserva = async () => {
@@ -114,6 +160,12 @@ export default function Reservas({ setPaginaActual }) {
       const restantes = typeof ocupadas === 'number' ? maximo - ocupadas : null
 
       setMesasLibres(restantes)
+      setStatusAforo({
+        mesasOcupadas: ocupadas,
+        mesasLibres: restantes,
+        estado:
+          restantes <= 0 ? 'completo' : restantes < 5 ? 'ultimas_plazas' : 'disponible',
+      })
       setExito({
         nombre: data?.reserva?.nombre ?? nombre.trim(),
         localizador: data?.localizador ?? '—',
@@ -135,9 +187,11 @@ export default function Reservas({ setPaginaActual }) {
     setTurno('almuerzo')
     setErrorMsg('')
     setMesasLibres(null)
+    setStatusAforo(null)
   }
 
-  const formularioBloqueado = Boolean(errorMsg)
+  const aforoCompleto = statusAforo?.estado === 'completo'
+  const formularioBloqueado = Boolean(errorMsg) || aforoCompleto
 
   return (
     <div className="reservas-page">
@@ -209,6 +263,33 @@ export default function Reservas({ setPaginaActual }) {
                 </select>
               </div>
             </div>
+
+            {statusAforo && (
+              <div
+                className={`reservas-aforo-widget reservas-aforo-widget--${statusAforo.estado}`}
+                role="status"
+              >
+                {statusAforo.estado === 'disponible' && (
+                  <p className="reservas-aforo-widget__texto">
+                    🟢 Excelente elección. Disponibilidad alta ({statusAforo.mesasLibres} mesas
+                    libres)
+                  </p>
+                )}
+
+                {statusAforo.estado === 'ultimas_plazas' && (
+                  <p className="reservas-aforo-widget__texto reservas-aforo-widget__texto--blink">
+                    🟠 ¡Date prisa! Quedan muy pocas mesas para este turno (
+                    {statusAforo.mesasLibres} mesas libres)
+                  </p>
+                )}
+
+                {statusAforo.estado === 'completo' && (
+                  <p className="reservas-aforo-widget__texto">
+                    ⚫ Aforo completo de 30 mesas. Por favor, selecciona otra fecha o turno.
+                  </p>
+                )}
+              </div>
+            )}
 
             {fecha && !errorMsg && typeof mesasLibres === 'number' && (
               <div className="reservas-aforo-panel" role="status">
