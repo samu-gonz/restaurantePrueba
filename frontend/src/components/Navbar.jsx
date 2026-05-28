@@ -152,6 +152,11 @@ export default function Navbar({ paginaActual, setPaginaActual }) {
     cerrarMenu()
   }
 
+  const irAdmin = () => {
+    setPaginaActual('admin')
+    cerrarMenu()
+  }
+
   return (
     <>
       {/* ── Barra superior fija ─────────────────────────────────────────── */}
@@ -241,6 +246,9 @@ export default function Navbar({ paginaActual, setPaginaActual }) {
         </nav>
 
         <div className="sidebar-drawer__footer">
+          <button type="button" className="sidebar-admin-link" onClick={irAdmin}>
+            Panel de administración
+          </button>
           <WidgetEstadoPremium estaAbierto={estaAbierto} />
         </div>
       </aside>

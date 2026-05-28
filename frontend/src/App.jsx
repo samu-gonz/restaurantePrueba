@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Chatbot from './components/Chatbot'
 import Navbar from './components/Navbar'
+import Admin from './pages/Admin'
 import Home from './pages/Home'
 import Reservas from './pages/Reservas'
 
@@ -27,6 +28,7 @@ export default function App() {
       <main id="contenido">
         {paginaActual === 'home' && <Home setPaginaActual={cambiarPagina} />}
         {paginaActual === 'reservas' && <Reservas setPaginaActual={cambiarPagina} />}
+        {paginaActual === 'admin' && <Admin />}
       </main>
 
       <footer className="app-footer">

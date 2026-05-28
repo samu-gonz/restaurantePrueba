@@ -5,6 +5,7 @@ import { CONFIG_RESTAURANTE } from '../data/db'
 
 const MESAS_MAX = CONFIG_RESTAURANTE.TOTAL_MESAS_MAX
 const API_BASE_URL = 'http://localhost:5000'
+const POLLING_AFORO_MS = 12_000
 
 const MSG_CIERRE =
   '🍷 Cerramos los lunes y martes por mantenimiento de viñedos y descanso del personal. Elige otro día.'
@@ -58,22 +59,11 @@ export default function Reservas({ setPaginaActual }) {
     [],
   )
 
-  useEffect(() => {
-    if (!fecha || !turno) {
-      setStatusAforo(null)
-      return
-    }
-
-    if (!validarDisponibilidad(fecha)) return
-
-    const controller = new AbortController()
-
-    async function handleCheckAforo() {
+  const handleCheckAforo = useCallback(
+    async (fechaSel, turnoSel) => {
       try {
-        const params = new URLSearchParams({ fecha, turno })
-        const response = await fetch(`${API_BASE_URL}/api/disponibilidad?${params.toString()}`, {
-          signal: controller.signal,
-        })
+        const params = new URLSearchParams({ fecha: fechaSel, turno: turnoSel })
+        const response = await fetch(`${API_BASE_URL}/api/disponibilidad?${params.toString()}`)
         const data = await response.json().catch(() => ({}))
 
         if (!response.ok) {
@@ -83,26 +73,32 @@ export default function Reservas({ setPaginaActual }) {
         setStatusAforo(data)
         setMesasLibres(data.mesasLibres)
       } catch (error) {
-        if (error.name !== 'AbortError') {
-          setStatusAforo(null)
-          setMesasLibres(null)
-          setErrorMsg(
-            error.message ||
-              'No pudimos consultar disponibilidad en este momento. Revisa tu conexión.',
-          )
-        }
+        setStatusAforo(null)
+        setMesasLibres(null)
+        setErrorMsg(
+          error.message || 'No pudimos consultar disponibilidad en este momento. Revisa tu conexión.',
+        )
       }
-    }
-
-    handleCheckAforo()
-
-    return () => controller.abort()
-  }, [fecha, turno, validarDisponibilidad])
+    },
+    [],
+  )
 
   useEffect(() => {
-    if (!fecha) return
-    validarDisponibilidad(fecha)
-  }, [fecha, turno, validarDisponibilidad])
+    if (!fecha || !turno) {
+      setStatusAforo(null)
+      setMesasLibres(null)
+      return
+    }
+
+    if (!validarDisponibilidad(fecha)) return
+
+    handleCheckAforo(fecha, turno)
+    const pollId = window.setInterval(() => {
+      handleCheckAforo(fecha, turno)
+    }, POLLING_AFORO_MS)
+
+    return () => window.clearInterval(pollId)
+  }, [fecha, turno, validarDisponibilidad, handleCheckAforo])
 
   const onFechaChange = (e) => {
     setFecha(e.target.value)

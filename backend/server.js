@@ -20,6 +20,7 @@ app.use(
 // “Persistencia” en memoria (se pierde al reiniciar el servidor)
 // clave: `${fecha}-${turno}` => mesasOcupadas (número)
 const aforoPorTurno = new Map()
+const reservasRegistradas = []
 
 function parseFechaLocal(fechaISO) {
   // Espera formato YYYY-MM-DD
@@ -59,6 +60,10 @@ function generarLocalizador() {
   return `#RE-${year}${sufijo}`
 }
 
+function valorOrdenTurno(turno) {
+  return turno === 'almuerzo' ? 0 : 1
+}
+
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true })
 })
@@ -96,6 +101,24 @@ app.get('/api/disponibilidad', (req, res) => {
     mesasOcupadas: ocupadas,
     mesasLibres: libres,
     estado: calcularEstadoAforo(libres),
+  })
+})
+
+// GET /api/admin/reservas
+// Devuelve todas las reservas ordenadas cronológicamente por fecha y turno.
+app.get('/api/admin/reservas', (_req, res) => {
+  const reservasOrdenadas = reservasRegistradas
+    .slice()
+    .sort((a, b) => {
+      if (a.fecha === b.fecha) {
+        return valorOrdenTurno(a.turno) - valorOrdenTurno(b.turno)
+      }
+      return a.fecha.localeCompare(b.fecha)
+    })
+
+  return res.json({
+    total: reservasOrdenadas.length,
+    reservas: reservasOrdenadas,
   })
 })
 
@@ -147,10 +170,20 @@ app.post('/api/reservas', (req, res) => {
 
   const nuevasOcupadas = ocupadasActuales + 1
   aforoPorTurno.set(clave, nuevasOcupadas)
+  const localizador = generarLocalizador()
+
+  reservasRegistradas.push({
+    id: reservasRegistradas.length + 1,
+    nombre: String(nombre),
+    fecha,
+    turno: turnoNormalizado,
+    localizador,
+    createdAt: new Date().toISOString(),
+  })
 
   return res.status(201).json({
     ok: true,
-    localizador: generarLocalizador(),
+    localizador,
     reserva: {
       fecha,
       turno: turnoNormalizado,
