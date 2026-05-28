@@ -11,7 +11,7 @@ const COLOR_ALERGENO = '#737373'
 const RADIUS_TOP = 16
 
 const MAPS_URL = `https://maps.google.com/?q=${encodeURIComponent(
-  'Los Realejos, Tenerife, España',
+  'Camino El Vinculito 14 Los Realejos Tenerife',
 )}`
 
 const CATEGORIAS = [
@@ -23,36 +23,24 @@ const CATEGORIAS = [
 
 const HERO_CARRUSEL_INTERVALO_MS = 4000
 const COLOR_ACENTO_VINO = '#9B111E'
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5000'
 
-/** Imágenes premium Pexels — sin hotlinking agresivo en localhost */
-const HERO_CARRUSEL_IMAGENES = [
+const imagenesCarrusel = [
   {
-    id: 'bodega',
-    src: 'https://images.pexels.com/photos/340592/pexels-photo-340592.jpeg?auto=compress&cs=tinysrgb&w=1600&h=900&fit=crop',
-    alt: 'Barricas de roble en bodega oscura',
-    label: 'Nuestro espacio',
-    title: 'El lagar de El Realejo',
+    url: 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=1600&h=600&q=80',
+    alt: 'Bodega tradicional de vino',
   },
   {
-    id: 'carne',
-    src: 'https://images.pexels.com/photos/361184/pexels-photo-361184.jpeg?auto=compress&cs=tinysrgb&w=1600&h=900&fit=crop',
-    alt: 'Carne a la parrilla con guarnición rústica',
-    label: 'De la brasa',
-    title: 'Carne con alma canaria',
+    url: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1600&h=600&q=80',
+    alt: 'Carnes a la brasa',
   },
   {
-    id: 'vino',
-    src: 'https://images.pexels.com/photos/1283219/pexels-photo-1283219.jpeg?auto=compress&cs=tinysrgb&w=1600&h=900&fit=crop',
-    alt: 'Copa de vino tinto en ambiente íntimo',
-    label: 'Vino de cosecha',
-    title: 'Listán de nuestra tierra',
-  },
-  {
-    id: 'viniedo',
-    src: 'https://images.pexels.com/photos/3127638/pexels-photo-3127638.jpeg?auto=compress&cs=tinysrgb&w=1600&h=900&fit=crop',
+    url: 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?auto=format&fit=crop&w=1600&h=600&q=80',
     alt: 'Viñedos al atardecer',
-    label: 'Origen',
-    title: 'Sabor de la tierra',
+  },
+  {
+    url: 'https://images.unsplash.com/photo-1516685018646-549198525c1b?auto=format&fit=crop&w=1600&h=600&q=80',
+    alt: 'Mesa rústica con vino y pan',
   },
 ]
 
@@ -139,8 +127,8 @@ function HeroCarruselPanoramico() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [tickAutoplay, setTickAutoplay] = useState(0)
 
-  const total = HERO_CARRUSEL_IMAGENES.length
-  const slideActivo = HERO_CARRUSEL_IMAGENES[currentImageIndex]
+  const total = imagenesCarrusel.length
+  const slideActivo = imagenesCarrusel[currentImageIndex]
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -163,11 +151,11 @@ function HeroCarruselPanoramico() {
       aria-label="Galería visual del guachinche"
     >
       <div className="home-hero-carousel__viewport">
-        {HERO_CARRUSEL_IMAGENES.map((imagen, index) => (
+        {imagenesCarrusel.map((item, index) => (
           <img
-            key={imagen.id}
-            src={imagen.src}
-            alt={imagen.alt}
+            key={item.url}
+            src={item.url}
+            alt={item.alt}
             className={
               index === currentImageIndex
                 ? 'home-hero-carousel__slide is-active'
@@ -182,8 +170,8 @@ function HeroCarruselPanoramico() {
         <div className="home-hero-carousel__gradient" aria-hidden="true" />
 
         <div className="home-hero-carousel__caption">
-          <p className="home-hero-carousel__caption-label">{slideActivo.label}</p>
-          <p className="home-hero-carousel__caption-title">{slideActivo.title}</p>
+          <p className="home-hero-carousel__caption-label">Nuestro espacio</p>
+          <p className="home-hero-carousel__caption-title">{slideActivo.alt}</p>
         </div>
 
         <div
@@ -191,13 +179,13 @@ function HeroCarruselPanoramico() {
           role="tablist"
           aria-label="Seleccionar imagen del carrusel"
         >
-          {HERO_CARRUSEL_IMAGENES.map((imagen, index) => (
+          {imagenesCarrusel.map((item, index) => (
             <button
-              key={imagen.id}
+              key={item.url}
               type="button"
               role="tab"
               aria-selected={index === currentImageIndex}
-              aria-label={`Ver imagen ${index + 1}: ${imagen.title}`}
+              aria-label={`Ver imagen ${index + 1}: ${item.alt}`}
               className={
                 index === currentImageIndex
                   ? 'home-hero-carousel__dot is-active'
@@ -285,7 +273,7 @@ export default function Home({ setPaginaActual }) {
         setLoading(true)
         setErrorMenu('')
 
-        const response = await fetch('http://localhost:5000/api/menu', {
+        const response = await fetch(`${API_BASE_URL}/api/menu`, {
           signal: controller.signal,
         })
 
@@ -367,17 +355,28 @@ export default function Home({ setPaginaActual }) {
       >
         <article className="bento-card">
           <h3 className="bento-card__title">Nuestra Ubicación</h3>
-          <p className="bento-card__text">Los Realejos, Tenerife, España</p>
+          <p className="bento-card__text">
+            <span style={{ color: '#9B111E', marginRight: '0.35rem' }} aria-hidden="true">
+              📍
+            </span>
+            Camino El Vinculito, Nº 14
+            <br />
+            La Cruz Santa, 38413, Los Realejos, Santa Cruz de Tenerife
+          </p>
+          <p className="bento-card__text">
+            Nos encontramos en el corazón de La Cruz Santa, rodeados de tradición
+            vitivinícola. Ven a visitarnos en Camino El Vinculito, Nº 14, Los Realejos.
+          </p>
           <a
-            href={MAPS_URL}
+            href="https://www.google.com/maps/search/?api=1&query=Camino+El+Vinculito+14+Los+Realejos+Tenerife"
             target="_blank"
             rel="noopener noreferrer"
             className="btn-premium bento-card__btn"
           >
-            Ver en Google Maps
+            Abrir en Google Maps
           </a>
         </article>
-        <article className="bento-card bento-card--accent">
+        <article className="bento-card bento-card--accent bento-card--vino">
           <h3 className="bento-card__title">Vino de Cosecha</h3>
           <p className="bento-card__text">
             Listán Negro y Blanco Afrutado de nuestras barricas.

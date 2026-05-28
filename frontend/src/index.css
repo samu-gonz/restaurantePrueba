@@ -911,6 +911,31 @@ textarea:focus {
   border-left: 3px solid var(--accent-color);
 }
 
+.bento-card--vino {
+  position: relative;
+  overflow: hidden;
+  border-left: 3px solid var(--accent-color);
+  background-image: linear-gradient(
+      to top,
+      rgba(13, 13, 13, 0.92) 0%,
+      rgba(13, 13, 13, 0.72) 45%,
+      rgba(13, 13, 13, 0.55) 100%
+    ),
+    url('https://images.pexels.com/photos/2897305/pexels-photo-2897305.jpeg?auto=compress&cs=tinysrgb&w=1200&h=800&fit=crop');
+  background-size: cover;
+  background-position: center;
+}
+
+.bento-card--vino > * {
+  position: relative;
+  z-index: 1;
+}
+
+.bento-card--vino .bento-card__title,
+.bento-card--vino .bento-card__text {
+  color: #f5f5f5;
+}
+
 .bento-card__btn {
   display: inline-block;
   text-decoration: none;

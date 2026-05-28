@@ -4,8 +4,9 @@ import { CONFIG_RESTAURANTE } from '../data/db'
 /* ── Constantes de negocio ─────────────────────────────────────────────────── */
 
 const MESAS_MAX = CONFIG_RESTAURANTE.TOTAL_MESAS_MAX
-const API_BASE_URL = 'http://localhost:5000'
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5000'
 const POLLING_AFORO_MS = 12_000
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i
 
 const MSG_CIERRE =
   '🍷 Cerramos los lunes y martes por mantenimiento de viñedos y descanso del personal. Elige otro día.'
@@ -31,6 +32,7 @@ function fechaMinimaHoy() {
 /** Reservas conectadas al backend Express */
 export default function Reservas({ setPaginaActual }) {
   const [nombre, setNombre] = useState('')
+  const [email, setEmail] = useState('')
   const [fecha, setFecha] = useState('')
   const [turno, setTurno] = useState('almuerzo')
   const [errorMsg, setErrorMsg] = useState('')
@@ -123,6 +125,7 @@ export default function Reservas({ setPaginaActual }) {
       },
       body: JSON.stringify({
         nombre: nombre.trim(),
+        email: email.trim(),
         fecha,
         turno,
       }),
@@ -139,7 +142,12 @@ export default function Reservas({ setPaginaActual }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!nombre.trim() || !fecha) return
+    if (!nombre.trim() || !email.trim() || !fecha) return
+
+    if (!EMAIL_REGEX.test(email.trim())) {
+      setErrorMsg('Correo electrónico inválido. Revisa el formato e inténtalo de nuevo.')
+      return
+    }
 
     if (!validarDisponibilidad(fecha)) return
 
@@ -164,6 +172,7 @@ export default function Reservas({ setPaginaActual }) {
       })
       setExito({
         nombre: data?.reserva?.nombre ?? nombre.trim(),
+        email: data?.reserva?.email ?? email.trim(),
         localizador: data?.localizador ?? '—',
         fecha: data?.reserva?.fecha ?? fecha,
         turno: turnoTexto,
@@ -179,6 +188,7 @@ export default function Reservas({ setPaginaActual }) {
   const nuevaReserva = () => {
     setExito(null)
     setNombre('')
+    setEmail('')
     setFecha('')
     setTurno('almuerzo')
     setErrorMsg('')
@@ -203,6 +213,9 @@ export default function Reservas({ setPaginaActual }) {
             <p className="reservas-exito__texto">
               Gracias, <strong>{exito.nombre}</strong>. Tu mesa queda registrada para el
               turno de {exito.turno}.
+            </p>
+            <p className="text-muted" style={{ fontSize: '0.9rem' }}>
+              Confirmación enviada a: <strong>{exito.email}</strong>
             </p>
             <div className="reservas-exito__locator">LOCALIZADOR: {exito.localizador}</div>
             {typeof exito.mesasRestantes === 'number' && (
@@ -234,6 +247,19 @@ export default function Reservas({ setPaginaActual }) {
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
                 placeholder="Tu nombre completo"
+                disabled={enviando}
+              />
+            </div>
+
+            <div className="reservas-field">
+              <label htmlFor="email-titular">Correo electrónico</label>
+              <input
+                id="email-titular"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="tuemail@dominio.com"
                 disabled={enviando}
               />
             </div>
@@ -302,7 +328,7 @@ export default function Reservas({ setPaginaActual }) {
             <button
               type="submit"
               className="btn-premium btn--block"
-              disabled={formularioBloqueado || !fecha || !nombre.trim() || enviando}
+              disabled={formularioBloqueado || !fecha || !nombre.trim() || !email.trim() || enviando}
             >
               {enviando ? 'Confirmando reserva...' : 'Confirmar reserva'}
             </button>
