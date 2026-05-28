@@ -297,6 +297,7 @@ export default function Home({ setPaginaActual }) {
         setMenu(Array.isArray(data) ? data : [])
       } catch (error) {
         if (error.name !== 'AbortError') {
+          console.error('Detalles del fallo de conexión:', error)
           setErrorMenu('No pudimos cargar la carta ahora mismo. Inténtalo de nuevo.')
           setMenu([])
         }
