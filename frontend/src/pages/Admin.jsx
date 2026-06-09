@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 
-const API_BASE_URL = 'http://localhost:5000'
+import { API_BASE_URL } from '../config/api'
 
 function formatearFecha(fechaISO) {
   if (!fechaISO) return '—'

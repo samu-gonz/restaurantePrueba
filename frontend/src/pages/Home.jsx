@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { IMAGEN_CARTA_FALLBACK } from '../data/db'
+import { useState } from 'react'
+import { IMAGEN_CARTA_FALLBACK, menuData } from '../data/db'
 import './Home.css'
 
 /* ── Tokens visuales ─────────────────────────────────────────────────────── */
@@ -18,13 +18,12 @@ const CATEGORIAS = [
   { id: 'todos', label: 'Todos' },
   { id: 'entrantes', label: 'Entrantes' },
   { id: 'carnes', label: 'Carnes' },
+  { id: 'pescados', label: 'Pescados' },
   { id: 'postres', label: 'Postres' },
 ]
 
 const HERO_CARRUSEL_INTERVALO_MS = 4000
 const COLOR_ACENTO_VINO = '#9B111E'
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5000'
-
 const imagenesCarrusel = [
   {
     url: 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=1600&h=600&q=80',
@@ -261,50 +260,11 @@ function TarjetaPlato({ plato }) {
 
 export default function Home({ setPaginaActual }) {
   const [categoria, setCategoria] = useState('todos')
-  const [menu, setMenu] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [errorMenu, setErrorMenu] = useState('')
-
-  useEffect(() => {
-    const controller = new AbortController()
-
-    async function cargarMenu() {
-      try {
-        setLoading(true)
-        setErrorMenu('')
-
-        const response = await fetch(`${API_BASE_URL}/api/menu`, {
-          signal: controller.signal,
-        })
-
-        if (!response.ok) {
-          throw new Error('No se pudo cargar la carta desde el servidor.')
-        }
-
-        const data = await response.json()
-        setMenu(Array.isArray(data) ? data : [])
-      } catch (error) {
-        if (error.name !== 'AbortError') {
-          console.error('Detalles del fallo de conexión:', error)
-          setErrorMenu('No pudimos cargar la carta ahora mismo. Inténtalo de nuevo.')
-          setMenu([])
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false)
-        }
-      }
-    }
-
-    cargarMenu()
-
-    return () => controller.abort()
-  }, [])
 
   const platosFiltrados =
     categoria === 'todos'
-      ? menu
-      : menu.filter((plato) => plato.categoria === categoria)
+      ? menuData
+      : menuData.filter((plato) => plato.categoria === categoria)
 
   const irCarta = () => {
     document.getElementById('carta-digital')?.scrollIntoView({ behavior: 'smooth' })
@@ -405,21 +365,13 @@ export default function Home({ setPaginaActual }) {
           ))}
         </div>
 
-        {loading ? (
-          <p className="carta-digital__empty text-muted">Cargando carta del servidor…</p>
-        ) : errorMenu ? (
-          <div className="reservas-alert" role="alert">
-            {errorMenu}
-          </div>
-        ) : (
-          <div className="home-carta-grid">
-            {platosFiltrados.map((plato) => (
-              <TarjetaPlato key={plato.id} plato={plato} />
-            ))}
-          </div>
-        )}
+        <div className="home-carta-grid">
+          {platosFiltrados.map((plato) => (
+            <TarjetaPlato key={plato.id} plato={plato} />
+          ))}
+        </div>
 
-        {!loading && !errorMenu && platosFiltrados.length === 0 && (
+        {platosFiltrados.length === 0 && (
           <p className="carta-digital__empty text-muted">
             No hay platos en esta categoría.
           </p>

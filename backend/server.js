@@ -1,32 +1,178 @@
+import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
 import nodemailer from 'nodemailer'
 
-const PORT = 5000
+const PORT = Number(process.env.PORT) || 5000
 const MESAS_MAX = 30
-const ORIGENES_LOCALES_REGEX = /^https?:\/\/(localhost|127\.0\.0\.1):\d+$/
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i
+const CORS_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:5175',
+  'https://restaurante-prueba-chi.vercel.app',
+  process.env.FRONTEND_URL,
+].filter(Boolean)
+const CORS_LOCAL_REGEX = /^https?:\/\/(localhost|127\.0\.0\.1):\d+$/
+const CORS_VERCEL_REGEX = /^https:\/\/[a-z0-9-]+\.vercel\.app$/
 const CORREO_DUENO = 'samuelgonz2006@gmail.com'
 
-let transporter = null
-let emailFromAddress = null
-
+// 14 platos ampliados
 const menuData = [
-  { id: 1, nombre: 'Queso asado con mojos', categoria: 'entrantes', precio: 7.2, imagen: 'https://images.pexels.com/photos/821365/pexels-photo-821365.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop', descripcion: 'Queso palmero a la plancha, dorado al momento y servido con mojo rojo picón y mojo verde de cilantro.', alergenos: ['Lácteos'] },
-  { id: 2, nombre: 'Garbanzas compuestas', categoria: 'entrantes', precio: 6.9, imagen: 'https://images.pexels.com/photos/5949914/pexels-photo-5949914.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop', descripcion: 'Garbanzas guisadas a fuego lento con sofrito casero, verdura de temporada y toque ahumado tradicional.', alergenos: [] },
-  { id: 3, nombre: 'Croquetas caseras del día', categoria: 'entrantes', precio: 6.5, imagen: 'https://images.pexels.com/photos/4198023/pexels-photo-4198023.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop', descripcion: 'Croquetas cremosas con rebozado crujiente, elaboradas cada mañana según receta de la casa.', alergenos: ['Gluten', 'Lácteos', 'Huevo'] },
-  { id: 4, nombre: 'Escaldón de gofio', categoria: 'entrantes', precio: 5.8, imagen: 'https://images.pexels.com/photos/691114/pexels-photo-691114.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop', descripcion: 'Gofio amasado con caldo sabroso, cebolla roja y queso curado rallado al estilo de las tascas canarias.', alergenos: ['Gluten', 'Lácteos'] },
-  { id: 5, nombre: 'Costillas con papas y piña', categoria: 'carnes', precio: 14.0, imagen: 'https://images.pexels.com/photos/1639562/pexels-photo-1639562.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop', descripcion: 'Costillas saladas cocidas a fuego lento, papas arrugadas y piña de millo con mojo verde.', alergenos: [] },
-  { id: 6, nombre: 'Carne de fiesta', categoria: 'carnes', precio: 11.2, imagen: 'https://images.pexels.com/photos/361184/pexels-photo-361184.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop', descripcion: 'Tacos de cerdo adobados durante 24 horas con ajo, orégano y pimentón, servidos con papas fritas.', alergenos: [] },
-  { id: 7, nombre: 'Secreto ibérico a la brasa', categoria: 'carnes', precio: 15.5, imagen: 'https://images.pexels.com/photos/1833330/pexels-photo-1833330.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop', descripcion: 'Corte jugoso de cerdo ibérico marcado a la brasa, acompañado de verduras asadas y papas de la tierra.', alergenos: [] },
-  { id: 8, nombre: 'Pollo al salmorejo', categoria: 'carnes', precio: 10.8, imagen: 'https://images.pexels.com/photos/2338407/pexels-photo-2338407.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop', descripcion: 'Pollo de corral macerado en salmorejo canario, dorado en sartén y terminado con su salsa especiada.', alergenos: [] },
-  { id: 15, nombre: 'Vino de la Casa 1L', categoria: 'entrantes', precio: 8.5, imagen: 'https://images.pexels.com/photos/2903126/pexels-photo-2903126.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop', descripcion: 'Vino de la casa servido en jarra de 1 litro, con carácter volcánico y notas afrutadas.', alergenos: ['Sulfitos'] },
-  { id: 9, nombre: 'Bacalao encebollado', categoria: 'pescados', precio: 12.8, imagen: 'https://images.pexels.com/photos/262959/pexels-photo-262959.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop', descripcion: 'Bacalao confitado con cebolla caramelizada y toque de vino blanco, receta marinera de tradición.', alergenos: ['Pescado'] },
-  { id: 10, nombre: 'Cherne encebollado', categoria: 'pescados', precio: 13.9, imagen: 'https://images.pexels.com/photos/3296275/pexels-photo-3296275.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop', descripcion: 'Lomos de cherne guisados con cebolla pochada, vino blanco y laurel en salsa suave de la casa.', alergenos: ['Pescado'] },
-  { id: 11, nombre: 'Churros de pescado', categoria: 'pescados', precio: 10.6, imagen: 'https://images.pexels.com/photos/6141040/pexels-photo-6141040.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop', descripcion: 'Tiras crujientes de pescado fresco en fritura ligera, ideales para compartir con mojo y limón.', alergenos: ['Pescado', 'Gluten'] },
-  { id: 12, nombre: 'Polvito uruguayo', categoria: 'postres', precio: 4.9, imagen: 'https://images.pexels.com/photos/45201/pexels-photo-45201.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop', descripcion: 'Postre artesanal de galleta, dulce de leche, nata montada y merengue, servido bien fresquito.', alergenos: ['Gluten', 'Lácteos'] },
-  { id: 13, nombre: 'Quesillo canario', categoria: 'postres', precio: 4.5, imagen: 'https://images.pexels.com/photos/3026808/pexels-photo-3026808.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop', descripcion: 'Flan canario con leche condensada, caramelo casero y ralladura de limón, textura cremosa y suave.', alergenos: ['Lácteos', 'Huevo'] },
-  { id: 14, nombre: 'Frangollo tradicional', categoria: 'postres', precio: 4.2, imagen: 'https://images.pexels.com/photos/6546013/pexels-photo-6546013.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop', descripcion: 'Postre típico elaborado con millo, leche, pasas, almendra y canela, cocinado al estilo de antes.', alergenos: ['Lácteos', 'Frutos secos'] },
+  {
+    id: 1,
+    nombre: 'Queso asado con mojos',
+    categoria: 'entrantes',
+    precio: 7.2,
+    imagen:
+      'https://images.pexels.com/photos/821365/pexels-photo-821365.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop',
+    descripcion:
+      'Queso palmero a la plancha, dorado al momento y servido con mojo rojo picón y mojo verde de cilantro.',
+    alergenos: ['Lácteos'],
+  },
+  {
+    id: 2,
+    nombre: 'Garbanzas compuestas',
+    categoria: 'entrantes',
+    precio: 6.9,
+    imagen:
+      'https://images.pexels.com/photos/5949914/pexels-photo-5949914.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop',
+    descripcion:
+      'Garbanzas guisadas a fuego lento con sofrito casero, verdura de temporada y toque ahumado tradicional.',
+    alergenos: [],
+  },
+  {
+    id: 3,
+    nombre: 'Croquetas caseras del día',
+    categoria: 'entrantes',
+    precio: 6.5,
+    imagen:
+      'https://images.pexels.com/photos/4198023/pexels-photo-4198023.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop',
+    descripcion:
+      'Croquetas cremosas con rebozado crujiente, elaboradas cada mañana según receta de la casa.',
+    alergenos: ['Gluten', 'Lácteos', 'Huevo'],
+  },
+  {
+    id: 4,
+    nombre: 'Escaldón de gofio',
+    categoria: 'entrantes',
+    precio: 5.8,
+    imagen:
+      'https://images.pexels.com/photos/691114/pexels-photo-691114.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop',
+    descripcion:
+      'Gofio amasado con caldo sabroso, cebolla roja y queso curado rallado al estilo de las tascas canarias.',
+    alergenos: ['Gluten', 'Lácteos'],
+  },
+  {
+    id: 5,
+    nombre: 'Vino de la Casa 1L',
+    categoria: 'entrantes',
+    precio: 8.5,
+    imagen:
+      'https://images.pexels.com/photos/2903126/pexels-photo-2903126.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop',
+    descripcion:
+      'Vino de la casa servido en jarra de 1 litro, con carácter volcánico y notas afrutadas.',
+    alergenos: ['Sulfitos'],
+  },
+  {
+    id: 6,
+    nombre: 'Costillas con papas y piña',
+    categoria: 'carnes',
+    precio: 14.0,
+    imagen:
+      'https://images.pexels.com/photos/1639562/pexels-photo-1639562.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop',
+    descripcion:
+      'Costillas saladas cocidas a fuego lento, papas arrugadas y piña de millo con mojo verde.',
+    alergenos: [],
+  },
+  {
+    id: 7,
+    nombre: 'Carne de fiesta',
+    categoria: 'carnes',
+    precio: 11.2,
+    imagen:
+      'https://images.pexels.com/photos/361184/pexels-photo-361184.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop',
+    descripcion:
+      'Tacos de cerdo adobados durante 24 horas con ajo, orégano y pimentón, servidos con papas fritas.',
+    alergenos: [],
+  },
+  {
+    id: 8,
+    nombre: 'Secreto ibérico a la brasa',
+    categoria: 'carnes',
+    precio: 15.5,
+    imagen:
+      'https://images.pexels.com/photos/1833330/pexels-photo-1833330.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop',
+    descripcion:
+      'Corte jugoso de cerdo ibérico marcado a la brasa, acompañado de verduras asadas y papas de la tierra.',
+    alergenos: [],
+  },
+  {
+    id: 9,
+    nombre: 'Pollo al salmorejo',
+    categoria: 'carnes',
+    precio: 10.8,
+    imagen:
+      'https://images.pexels.com/photos/2338407/pexels-photo-2338407.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop',
+    descripcion:
+      'Pollo de corral macerado en salmorejo canario, dorado en sartén y terminado con su salsa especiada.',
+    alergenos: [],
+  },
+  {
+    id: 10,
+    nombre: 'Bacalao encebollado',
+    categoria: 'pescados',
+    precio: 12.8,
+    imagen:
+      'https://images.pexels.com/photos/262959/pexels-photo-262959.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop',
+    descripcion:
+      'Bacalao confitado con cebolla caramelizada y toque de vino blanco, receta marinera de tradición.',
+    alergenos: ['Pescado'],
+  },
+  {
+    id: 11,
+    nombre: 'Cherne encebollado',
+    categoria: 'pescados',
+    precio: 13.9,
+    imagen:
+      'https://images.pexels.com/photos/3296275/pexels-photo-3296275.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop',
+    descripcion:
+      'Lomos de cherne guisados con cebolla pochada, vino blanco y laurel en salsa suave de la casa.',
+    alergenos: ['Pescado'],
+  },
+  {
+    id: 12,
+    nombre: 'Churros de pescado',
+    categoria: 'pescados',
+    precio: 10.6,
+    imagen:
+      'https://images.pexels.com/photos/6141040/pexels-photo-6141040.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop',
+    descripcion:
+      'Tiras crujientes de pescado fresco en fritura ligera, ideales para compartir con mojo y limón.',
+    alergenos: ['Pescado', 'Gluten'],
+  },
+  {
+    id: 13,
+    nombre: 'Polvito uruguayo',
+    categoria: 'postres',
+    precio: 4.9,
+    imagen:
+      'https://images.pexels.com/photos/45201/pexels-photo-45201.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop',
+    descripcion:
+      'Postre artesanal de galleta, dulce de leche, nata montada y merengue, servido bien fresquito.',
+    alergenos: ['Gluten', 'Lácteos'],
+  },
+  {
+    id: 14,
+    nombre: 'Quesillo canario',
+    categoria: 'postres',
+    precio: 4.5,
+    imagen:
+      'https://images.pexels.com/photos/3026808/pexels-photo-3026808.jpeg?auto=compress&cs=tinysrgb&w=900&h=700&fit=crop',
+    descripcion:
+      'Flan canario con leche condensada, caramelo casero y ralladura de limón, textura cremosa y suave.',
+    alergenos: ['Lácteos', 'Huevo'],
+  },
 ]
 
 const app = express()
@@ -34,7 +180,12 @@ const app = express()
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || ORIGENES_LOCALES_REGEX.test(origin)) {
+      if (
+        !origin ||
+        CORS_ORIGINS.includes(origin) ||
+        CORS_LOCAL_REGEX.test(origin) ||
+        CORS_VERCEL_REGEX.test(origin)
+      ) {
         callback(null, true)
         return
       }
@@ -48,6 +199,19 @@ app.use(express.json())
 
 const aforoPorTurno = new Map()
 const reservasRegistradas = []
+
+const emailUser = process.env.EMAIL_USER
+const emailPass = process.env.EMAIL_PASS
+const transporter =
+  emailUser && emailPass
+    ? nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user: emailUser, pass: emailPass },
+      })
+    : null
+const emailFromAddress = emailUser
+  ? `"El Realejo Tascas" <${emailUser}>`
+  : null
 
 function normalizarTexto(valor) {
   return String(valor ?? '').trim()
@@ -101,75 +265,17 @@ function turnoHumanReadable(turno) {
   return turno === 'almuerzo' ? 'Almuerzo (12:00 – 16:00)' : 'Cena (19:30 – 23:00)'
 }
 
-function plantillaHtmlConfirmacion({ nombre, fecha, turno, localizador }) {
+function plantillaBaseReserva({ titulo, subtitulo, nombre, email, fecha, turno, localizador }) {
   return `
   <div style="margin:0;padding:24px;background:#0D0D0D;color:#F5F5F5;font-family:Arial,Helvetica,sans-serif;">
     <div style="max-width:620px;margin:0 auto;background:#161616;border:1px solid #262626;border-radius:14px;overflow:hidden;">
       <div style="padding:18px 20px;border-bottom:1px solid #262626;">
-        <h1 style="margin:0;font-size:22px;font-weight:700;">El Realejo Tascas</h1>
-        <p style="margin:8px 0 0;color:#A3A3A3;">¡Reserva confirmada! Gracias por elegirnos 🍷</p>
-      </div>
-      <div style="padding:20px;">
-        <p style="margin:0 0 14px;color:#D4D4D4;">Hola <strong>${nombre}</strong>, te esperamos para disfrutar de la auténtica comida canaria.</p>
-        <table style="width:100%;border-collapse:collapse;">
-          <tr>
-            <td style="padding:8px 0;color:#A3A3A3;">Nombre</td>
-            <td style="padding:8px 0;text-align:right;color:#F5F5F5;">${nombre}</td>
-          </tr>
-          <tr>
-            <td style="padding:8px 0;color:#A3A3A3;">Fecha</td>
-            <td style="padding:8px 0;text-align:right;color:#F5F5F5;">${fecha}</td>
-          </tr>
-          <tr>
-            <td style="padding:8px 0;color:#A3A3A3;">Turno</td>
-            <td style="padding:8px 0;text-align:right;color:#F5F5F5;">${turnoHumanReadable(turno)}</td>
-          </tr>
-        </table>
-        <div style="margin-top:18px;padding:14px;border:1px dashed #9B111E;border-radius:10px;background:#111;">
-          <p style="margin:0 0 8px;color:#A3A3A3;font-size:12px;letter-spacing:.08em;text-transform:uppercase;">Localizador</p>
-          <p style="margin:0;font-size:26px;font-weight:800;color:#9B111E;">${localizador}</p>
-        </div>
-      </div>
-    </div>
-  </div>
-  `
-}
-
-async function inicializarEmail() {
-  const account = await nodemailer.createTestAccount()
-  transporter = nodemailer.createTransport({
-    host: account.smtp.host,
-    port: account.smtp.port,
-    secure: account.smtp.secure,
-    auth: {
-      user: account.user,
-      pass: account.pass,
-    },
-  })
-  emailFromAddress = `"El Realejo Tascas" <${account.user}>`
-  console.log('[email] Ethereal inicializado correctamente')
-  console.log(`[email] Cuenta de pruebas: ${account.user}`)
-}
-
-async function enviarCorreosReserva({ nombre, email, fecha, turno, localizador }) {
-  if (!transporter || !emailFromAddress) {
-    throw new Error(
-      'Sistema de correo no inicializado. Se esperaba transporter global de Ethereal.',
-    )
-  }
-
-  const subjectCliente = `¡Reserva Confirmada! 🍷 El Realejo Tascas - Localizador ${localizador}`
-  const htmlCliente = plantillaHtmlConfirmacion({ nombre, fecha, turno, localizador })
-  const htmlDueno = `
-  <div style="margin:0;padding:24px;background:#0D0D0D;color:#F5F5F5;font-family:Arial,Helvetica,sans-serif;">
-    <div style="max-width:620px;margin:0 auto;background:#161616;border:1px solid #262626;border-radius:14px;overflow:hidden;">
-      <div style="padding:18px 20px;border-bottom:1px solid #262626;">
-        <h1 style="margin:0;font-size:22px;font-weight:700;">Nueva reserva registrada</h1>
-        <p style="margin:8px 0 0;color:#A3A3A3;">Aviso interno para equipo de gestión del restaurante.</p>
+        <h1 style="margin:0;font-size:22px;font-weight:700;">${titulo}</h1>
+        <p style="margin:8px 0 0;color:#A3A3A3;">${subtitulo}</p>
       </div>
       <div style="padding:20px;">
         <table style="width:100%;border-collapse:collapse;">
-          <tr><td style="padding:8px 0;color:#A3A3A3;">Cliente</td><td style="padding:8px 0;text-align:right;color:#F5F5F5;">${nombre}</td></tr>
+          <tr><td style="padding:8px 0;color:#A3A3A3;">Nombre</td><td style="padding:8px 0;text-align:right;color:#F5F5F5;">${nombre}</td></tr>
           <tr><td style="padding:8px 0;color:#A3A3A3;">Email</td><td style="padding:8px 0;text-align:right;color:#F5F5F5;">${email}</td></tr>
           <tr><td style="padding:8px 0;color:#A3A3A3;">Fecha</td><td style="padding:8px 0;text-align:right;color:#F5F5F5;">${fecha}</td></tr>
           <tr><td style="padding:8px 0;color:#A3A3A3;">Turno</td><td style="padding:8px 0;text-align:right;color:#F5F5F5;">${turnoHumanReadable(turno)}</td></tr>
@@ -182,30 +288,6 @@ async function enviarCorreosReserva({ nombre, email, fecha, turno, localizador }
     </div>
   </div>
   `
-
-  const [infoCliente, infoDueno] = await Promise.all([
-    transporter.sendMail({
-      from: emailFromAddress,
-      to: email,
-      subject: subjectCliente,
-      html: htmlCliente,
-    }),
-    transporter.sendMail({
-      from: emailFromAddress,
-      to: CORREO_DUENO,
-      subject: `🚨 NUEVA RESERVA RECIBIDA - ${localizador}`,
-      html: htmlDueno,
-    }),
-  ])
-
-  console.log(
-    '📬 URL de prueba para el correo del Cliente: ',
-    nodemailer.getTestMessageUrl(infoCliente),
-  )
-  console.log(
-    '🏪 URL de prueba para el correo del Dueño: ',
-    nodemailer.getTestMessageUrl(infoDueno),
-  )
 }
 
 app.get('/api/health', (_req, res) => {
@@ -213,7 +295,6 @@ app.get('/api/health', (_req, res) => {
 })
 
 app.get('/api/menu', (_req, res) => {
-  console.log('Petición GET /api/menu recibida con éxito')
   const menuOrdenado = menuData.slice().sort((a, b) => {
     const categoriaA = valorOrdenCategoria(a.categoria)
     const categoriaB = valorOrdenCategoria(b.categoria)
@@ -253,9 +334,10 @@ app.get('/api/disponibilidad', (req, res) => {
 })
 
 app.get('/api/admin/reservas', (_req, res) => {
-  const reservasOrdenadas = reservasRegistradas
-    .slice()
-    .sort((a, b) => (a.fecha === b.fecha ? valorOrdenTurno(a.turno) - valorOrdenTurno(b.turno) : a.fecha.localeCompare(b.fecha)))
+  const reservasOrdenadas = reservasRegistradas.slice().sort((a, b) => {
+    if (a.fecha === b.fecha) return valorOrdenTurno(a.turno) - valorOrdenTurno(b.turno)
+    return a.fecha.localeCompare(b.fecha)
+  })
 
   return res.json({
     total: reservasOrdenadas.length,
@@ -297,6 +379,7 @@ app.post('/api/reservas', async (req, res) => {
       error: 'Fecha inválida. Usa el formato YYYY-MM-DD.',
     })
   }
+
   if (cerrado) {
     return res.status(400).json({
       ok: false,
@@ -314,6 +397,7 @@ app.post('/api/reservas', async (req, res) => {
 
   const clave = claveAforo(fechaNormalizada, turnoNormalizado)
   const ocupadasActuales = aforoPorTurno.get(clave) ?? 0
+
   if (ocupadasActuales >= MESAS_MAX) {
     return res.status(400).json({
       ok: false,
@@ -323,8 +407,8 @@ app.post('/api/reservas', async (req, res) => {
 
   const nuevasOcupadas = ocupadasActuales + 1
   aforoPorTurno.set(clave, nuevasOcupadas)
-  const localizador = generarLocalizador()
 
+  const localizador = generarLocalizador()
   reservasRegistradas.push({
     id: reservasRegistradas.length + 1,
     nombre: nombreNormalizado,
@@ -335,17 +419,50 @@ app.post('/api/reservas', async (req, res) => {
     createdAt: new Date().toISOString(),
   })
 
-  // Envío rápido usando transporter global ya inicializado al arranque.
   try {
-    await enviarCorreosReserva({
+    if (!transporter) {
+      throw new Error('Correo no configurado. Define EMAIL_USER y EMAIL_PASS en backend/.env')
+    }
+
+    const htmlCliente = plantillaBaseReserva({
+      titulo: 'El Realejo Tascas',
+      subtitulo: 'Tu reserva está confirmada. ¡Gracias por elegirnos!',
       nombre: nombreNormalizado,
       email: emailNormalizado,
       fecha: fechaNormalizada,
       turno: turnoNormalizado,
       localizador,
     })
+
+    const htmlDueno = plantillaBaseReserva({
+      titulo: 'Nueva reserva registrada',
+      subtitulo: 'Aviso interno para equipo de gestión del restaurante.',
+      nombre: nombreNormalizado,
+      email: emailNormalizado,
+      fecha: fechaNormalizada,
+      turno: turnoNormalizado,
+      localizador,
+    })
+
+    const [infoCliente, infoDueno] = await Promise.all([
+      transporter.sendMail({
+        from: emailFromAddress,
+        to: emailNormalizado,
+        subject: `¡Reserva Confirmada! 🍷 El Realejo Tascas - Localizador ${localizador}`,
+        html: htmlCliente,
+      }),
+      transporter.sendMail({
+        from: emailFromAddress,
+        to: CORREO_DUENO,
+        subject: `🚨 NUEVA RESERVA RECIBIDA - ${localizador}`,
+        html: htmlDueno,
+      }),
+    ])
+
+    console.log('📬 Correo de cliente enviado:', infoCliente.response)
+    console.log('🏪 Correo de dueño enviado:', infoDueno.response)
   } catch (error) {
-    console.error('Fallo al enviar correos (Ethereal):', error)
+    console.error('Fallo al enviar correos:', error)
   }
 
   return res.status(201).json({
@@ -365,19 +482,8 @@ app.post('/api/reservas', async (req, res) => {
   })
 })
 
-async function arrancarServidor() {
-  try {
-    await inicializarEmail()
-  } catch (error) {
-    console.error('[email] No se pudo inicializar Ethereal al arranque:', error)
-    console.warn('[email] El backend seguirá activo, pero sin envío de correos.')
-  }
-
-  app.listen(PORT, () => {
-    console.log(`Backend Guachinche El Realejo listo en http://localhost:${PORT}`)
-    console.log('CORS activo para localhost/127.0.0.1 en cualquier puerto local')
-  })
-}
-
-arrancarServidor()
+app.listen(PORT, () => {
+  console.log(`Backend Guachinche El Realejo listo en http://localhost:${PORT}`)
+  console.log('CORS activo para:', CORS_ORIGINS.join(', ') || '(ningún origen configurado)')
+})
 

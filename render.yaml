@@ -1,0 +1,18 @@
+# Despliega el backend en https://render.com (plan gratuito)
+# Tras el deploy, copia la URL pública y ponla en Vercel como VITE_API_URL
+services:
+  - type: web
+    name: el-realejo-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: FRONTEND_URL
+        value: https://restaurante-prueba-chi.vercel.app
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false

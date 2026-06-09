@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
+import { API_BASE_URL } from '../config/api'
 import { CONFIG_RESTAURANTE } from '../data/db'
 
 /* ── Constantes de negocio ─────────────────────────────────────────────────── */
 
 const MESAS_MAX = CONFIG_RESTAURANTE.TOTAL_MESAS_MAX
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5000'
 const POLLING_AFORO_MS = 12_000
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i
 
@@ -40,6 +40,10 @@ export default function Reservas({ setPaginaActual }) {
   const [statusAforo, setStatusAforo] = useState(null)
   const [exito, setExito] = useState(null)
   const [enviando, setEnviando] = useState(false)
+  const [disponibilidadTurnos, setDisponibilidadTurnos] = useState({
+    almuerzo: null,
+    cena: null,
+  })
 
   /** Validación rápida en frontend (el backend vuelve a validar siempre) */
   const validarDisponibilidad = useCallback(
@@ -85,6 +89,32 @@ export default function Reservas({ setPaginaActual }) {
     [],
   )
 
+  const actualizarTurnosDisponibles = useCallback(async (fechaSel) => {
+    if (!fechaSel) {
+      setDisponibilidadTurnos({ almuerzo: null, cena: null })
+      return
+    }
+
+    try {
+      const [resAlmuerzo, resCena] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/disponibilidad?${new URLSearchParams({ fecha: fechaSel, turno: 'almuerzo' }).toString()}`),
+        fetch(`${API_BASE_URL}/api/disponibilidad?${new URLSearchParams({ fecha: fechaSel, turno: 'cena' }).toString()}`),
+      ])
+
+      const [dataAlmuerzo, dataCena] = await Promise.all([
+        resAlmuerzo.json().catch(() => ({})),
+        resCena.json().catch(() => ({})),
+      ])
+
+      setDisponibilidadTurnos({
+        almuerzo: resAlmuerzo.ok ? dataAlmuerzo : null,
+        cena: resCena.ok ? dataCena : null,
+      })
+    } catch {
+      setDisponibilidadTurnos({ almuerzo: null, cena: null })
+    }
+  }, [])
+
   useEffect(() => {
     if (!fecha || !turno) {
       setStatusAforo(null)
@@ -95,12 +125,25 @@ export default function Reservas({ setPaginaActual }) {
     if (!validarDisponibilidad(fecha)) return
 
     handleCheckAforo(fecha, turno)
+    actualizarTurnosDisponibles(fecha)
     const pollId = window.setInterval(() => {
       handleCheckAforo(fecha, turno)
+      actualizarTurnosDisponibles(fecha)
     }, POLLING_AFORO_MS)
 
     return () => window.clearInterval(pollId)
-  }, [fecha, turno, validarDisponibilidad, handleCheckAforo])
+  }, [fecha, turno, validarDisponibilidad, handleCheckAforo, actualizarTurnosDisponibles])
+
+  useEffect(() => {
+    const almuerzoCompleto = disponibilidadTurnos.almuerzo?.estado === 'completo'
+    const cenaCompleto = disponibilidadTurnos.cena?.estado === 'completo'
+
+    if (turno === 'almuerzo' && almuerzoCompleto && !cenaCompleto) {
+      setTurno('cena')
+    } else if (turno === 'cena' && cenaCompleto && !almuerzoCompleto) {
+      setTurno('almuerzo')
+    }
+  }, [turno, disponibilidadTurnos])
 
   const onFechaChange = (e) => {
     setFecha(e.target.value)
@@ -194,9 +237,13 @@ export default function Reservas({ setPaginaActual }) {
     setErrorMsg('')
     setMesasLibres(null)
     setStatusAforo(null)
+    setDisponibilidadTurnos({ almuerzo: null, cena: null })
   }
 
   const aforoCompleto = statusAforo?.estado === 'completo'
+  const almuerzoCompleto = disponibilidadTurnos.almuerzo?.estado === 'completo'
+  const cenaCompleto = disponibilidadTurnos.cena?.estado === 'completo'
+  const ambosTurnosCompletos = almuerzoCompleto && cenaCompleto
   const formularioBloqueado = Boolean(errorMsg) || aforoCompleto
 
   return (
@@ -280,11 +327,21 @@ export default function Reservas({ setPaginaActual }) {
               <div className="reservas-field">
                 <label htmlFor="turno-visita">Turno</label>
                 <select id="turno-visita" value={turno} onChange={onTurnoChange} disabled={enviando}>
-                  <option value="almuerzo">Almuerzo (12:00 – 16:00)</option>
-                  <option value="cena">Cena (19:30 – 23:00)</option>
+                  <option value="almuerzo" disabled={almuerzoCompleto}>
+                    Almuerzo (12:00 – 16:00){almuerzoCompleto ? ' - Completo' : ''}
+                  </option>
+                  <option value="cena" disabled={cenaCompleto}>
+                    Cena (19:30 – 23:00){cenaCompleto ? ' - Completo' : ''}
+                  </option>
                 </select>
               </div>
             </div>
+
+            {fecha && ambosTurnosCompletos && !errorMsg && (
+              <div className="reservas-alert" role="alert">
+                ⚫ No quedan mesas en ningún turno para esta fecha. Elige otra fecha.
+              </div>
+            )}
 
             {statusAforo && (
               <div
@@ -328,7 +385,14 @@ export default function Reservas({ setPaginaActual }) {
             <button
               type="submit"
               className="btn-premium btn--block"
-              disabled={formularioBloqueado || !fecha || !nombre.trim() || !email.trim() || enviando}
+              disabled={
+                formularioBloqueado ||
+                ambosTurnosCompletos ||
+                !fecha ||
+                !nombre.trim() ||
+                !email.trim() ||
+                enviando
+              }
             >
               {enviando ? 'Confirmando reserva...' : 'Confirmar reserva'}
             </button>
