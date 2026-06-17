@@ -41,7 +41,7 @@ const ESTILO_SIDEBAR = {
   position: 'fixed',
   top: 0,
   left: 0,
-  height: '100vh',
+  height: '100dvh',
   width: '300px',
   maxWidth: '88vw',
   background: '#161616',

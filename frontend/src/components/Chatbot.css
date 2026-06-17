@@ -1,9 +1,13 @@
 .chatbot-root {
   position: fixed;
-  bottom: 2rem;
-  right: 2rem;
+  bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  right: calc(1.25rem + env(safe-area-inset-right, 0px));
   z-index: 1000;
   font-family: var(--font-body, system-ui, sans-serif);
+  transform: translate3d(0, 0, 0);
+  -webkit-transform: translate3d(0, 0, 0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 /* Botón flotante */
@@ -485,14 +489,21 @@
   cursor: not-allowed;
 }
 
-@media (max-width: 30rem) {
+@media (max-width: 64rem) {
   .chatbot-root {
-    bottom: 1rem;
-    right: 1rem;
+    bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    right: calc(1rem + env(safe-area-inset-right, 0px));
   }
 
   .chatbot-panel {
+    width: min(360px, calc(100vw - 2rem));
+    height: min(450px, calc(100dvh - 5rem - env(safe-area-inset-bottom, 0px)));
+    max-height: calc(100dvh - 5rem - env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (max-width: 30rem) {
+  .chatbot-panel {
     width: calc(100vw - 2rem);
-    height: min(450px, calc(100dvh - 5rem));
   }
 }

@@ -105,6 +105,7 @@ html {
   -webkit-text-size-adjust: 100%;
   scroll-behavior: smooth;
   color-scheme: dark;
+  height: -webkit-fill-available;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -122,6 +123,7 @@ html {
 
 body {
   min-height: 100dvh;
+  min-height: -webkit-fill-available;
   font-family: var(--font-body);
   font-size: var(--text-base);
   line-height: 1.6;
@@ -179,6 +181,7 @@ button:focus-visible {
 
 .app > main {
   flex: 1;
+  padding-top: calc(var(--nav-height) + env(safe-area-inset-top, 0px));
 }
 
 .app-footer {
@@ -438,14 +441,19 @@ textarea:focus {
   transform: none;
 }
 
-/* ── 4. NAVBAR flotante (sticky + glass) ──────────────────────────────────── */
+/* ── 4. NAVBAR fija (fixed — Safari/iPad no respeta bien sticky) ─────────── */
 
 .navbar-float {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 100;
   width: 100%;
+  padding-top: env(safe-area-inset-top, 0px);
   border-bottom: 1px solid var(--border-color);
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 .navbar-float__inner {
