@@ -1573,7 +1573,26 @@ textarea:focus {
 }
 
 .admin-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
   margin-bottom: 1.5rem;
+}
+
+.admin-refresh-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.admin-notice {
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  border: 1px solid #3f3f3f;
+  background: rgba(155, 17, 30, 0.1);
+  color: #d4d4d4;
+  font-size: 0.9rem;
 }
 
 .admin-page__title {

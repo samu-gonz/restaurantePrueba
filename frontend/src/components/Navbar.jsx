@@ -4,9 +4,6 @@ import './Navbar.css'
 
 /* ── Horario de apertura ─────────────────────────────────────────────────── */
 
-/**
- * Almuerzo: 12:00–16:00 · Cena: 19:30–23:00
- */
 function comprobarApertura(fecha = new Date()) {
   const tiempoActual = fecha.getHours() + fecha.getMinutes() / 60
   const abiertoAlmuerzo = tiempoActual >= 12.0 && tiempoActual <= 16.0
@@ -14,17 +11,18 @@ function comprobarApertura(fecha = new Date()) {
   return abiertoAlmuerzo || abiertoCena
 }
 
-/* ── Semáforo premium (verde activo · gris apagado — sin rojo) ────────────── */
-
 const COLOR_ABIERTO = '#22c55e'
 const COLOR_CERRADO = '#525252'
 const TEXTO_ABIERTO = 'Abierto Ahora'
 const TEXTO_CERRADO = 'Cerrado (Abre 12:00 / 19:30)'
 
 const ENLACES_NAV = [
-  { id: 'inicio-carta', label: 'Inicio / Carta', seccion: 'carta-digital' },
-  { id: 'galeria', label: 'Galería del Lagar', seccion: 'galeria-lagar' },
-  { id: 'contacto', label: 'Contacto', seccion: 'contacto' },
+  { id: 'inicio', label: 'Inicio', tipo: 'inicio' },
+  { id: 'carta', label: 'Carta', tipo: 'seccion', seccion: 'carta-digital' },
+  { id: 'reservas', label: 'Reservar Mesa', tipo: 'pagina', pagina: 'reservas' },
+  { id: 'admin', label: 'Panel Admin', tipo: 'pagina', pagina: 'admin' },
+  { id: 'contacto', label: 'Contacto', tipo: 'seccion', seccion: 'contacto' },
+  { id: 'chat', label: 'Asistente virtual', tipo: 'chat' },
 ]
 
 const ESTILO_NAVBAR_GLASS = {
@@ -85,13 +83,10 @@ function WidgetEstadoPremium({ estaAbierto }) {
   )
 }
 
-/**
- * Navbar fijo con glassmorphism + sidebar drawer izquierdo.
- */
 export default function Navbar({ paginaActual, setPaginaActual, chatAbierto, onToggleChat }) {
   const [estaAbierto, setEstaAbierto] = useState(() => comprobarApertura())
   const [menuAbierto, setMenuAbierto] = useState(false)
-  const [seccionActiva, setSeccionActiva] = useState('inicio-carta')
+  const [seccionActiva, setSeccionActiva] = useState('inicio')
 
   const cerrarMenu = useCallback(() => setMenuAbierto(false), [])
   const abrirMenu = useCallback(() => setMenuAbierto(true), [])
@@ -122,6 +117,23 @@ export default function Navbar({ paginaActual, setPaginaActual, chatAbierto, onT
     }
   }, [menuAbierto, cerrarMenu])
 
+  const irInicio = useCallback(() => {
+    setPaginaActual('home')
+    setSeccionActiva('inicio')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    cerrarMenu()
+  }, [setPaginaActual, cerrarMenu])
+
+  const irPagina = useCallback(
+    (pagina) => {
+      setPaginaActual(pagina)
+      setSeccionActiva(pagina === 'reservas' ? 'reservas' : 'admin')
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      cerrarMenu()
+    },
+    [setPaginaActual, cerrarMenu],
+  )
+
   const irSeccion = useCallback(
     (enlaceId, seccionId) => {
       setSeccionActiva(enlaceId)
@@ -142,25 +154,42 @@ export default function Navbar({ paginaActual, setPaginaActual, chatAbierto, onT
     [paginaActual, setPaginaActual, cerrarMenu],
   )
 
-  const irInicio = () => {
-    setPaginaActual('home')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+  const abrirChat = useCallback(() => {
+    if (!chatAbierto) onToggleChat()
     cerrarMenu()
-  }
+  }, [chatAbierto, onToggleChat, cerrarMenu])
 
-  const irReservas = () => {
-    setPaginaActual('reservas')
-    cerrarMenu()
-  }
+  const manejarEnlace = useCallback(
+    (enlace) => {
+      if (enlace.tipo === 'inicio') {
+        irInicio()
+        return
+      }
+      if (enlace.tipo === 'pagina') {
+        irPagina(enlace.pagina)
+        return
+      }
+      if (enlace.tipo === 'seccion') {
+        irSeccion(enlace.id, enlace.seccion)
+        return
+      }
+      if (enlace.tipo === 'chat') {
+        abrirChat()
+      }
+    },
+    [irInicio, irPagina, irSeccion, abrirChat],
+  )
 
-  const irAdmin = () => {
-    setPaginaActual('admin')
-    cerrarMenu()
+  const enlaceActivo = (enlace) => {
+    if (enlace.tipo === 'pagina') return paginaActual === enlace.pagina
+    if (enlace.tipo === 'chat') return chatAbierto
+    if (enlace.tipo === 'inicio') return paginaActual === 'home' && seccionActiva === 'inicio'
+    if (enlace.tipo === 'seccion') return paginaActual === 'home' && seccionActiva === enlace.id
+    return false
   }
 
   return (
     <>
-      {/* ── Barra superior fija ─────────────────────────────────────────── */}
       <nav
         className="navbar-float"
         style={ESTILO_NAVBAR_GLASS}
@@ -173,7 +202,7 @@ export default function Navbar({ paginaActual, setPaginaActual, chatAbierto, onT
               className="navbar-hamburger"
               aria-expanded={menuAbierto}
               aria-controls="sidebar-drawer"
-              aria-label="Abrir menú lateral"
+              aria-label="Abrir menú"
               onClick={abrirMenu}
             >
               <span className="navbar-hamburger__line" />
@@ -203,7 +232,7 @@ export default function Navbar({ paginaActual, setPaginaActual, chatAbierto, onT
             <button
               type="button"
               className={`btn-premium navbar-float__cta ${paginaActual === 'reservas' ? 'navbar-cta--active' : ''}`}
-              onClick={irReservas}
+              onClick={() => irPagina('reservas')}
             >
               Reservar Mesa
             </button>
@@ -211,7 +240,6 @@ export default function Navbar({ paginaActual, setPaginaActual, chatAbierto, onT
         </div>
       </nav>
 
-      {/* ── Overlay (solo visible con menú abierto) ───────────────────── */}
       {menuAbierto && (
         <button
           type="button"
@@ -222,7 +250,6 @@ export default function Navbar({ paginaActual, setPaginaActual, chatAbierto, onT
         />
       )}
 
-      {/* ── Sidebar drawer ────────────────────────────────────────────── */}
       <aside
         id="sidebar-drawer"
         className={menuAbierto ? 'sidebar-drawer sidebar-drawer--open' : 'sidebar-drawer'}
@@ -234,6 +261,7 @@ export default function Navbar({ paginaActual, setPaginaActual, chatAbierto, onT
         aria-label="Menú de navegación"
       >
         <div className="sidebar-drawer__header">
+          <p className="sidebar-drawer__title">Menú</p>
           <button
             type="button"
             className="sidebar-drawer__close"
@@ -245,26 +273,23 @@ export default function Navbar({ paginaActual, setPaginaActual, chatAbierto, onT
         </div>
 
         <nav className="sidebar-drawer__nav" aria-label="Secciones del sitio">
-          {ENLACES_NAV.map(({ id, label, seccion }) => (
+          {ENLACES_NAV.map((enlace) => (
             <button
-              key={id}
+              key={enlace.id}
               type="button"
               className={
-                paginaActual === 'home' && seccionActiva === id
+                enlaceActivo(enlace)
                   ? 'sidebar-drawer__link sidebar-drawer__link--active'
                   : 'sidebar-drawer__link'
               }
-              onClick={() => irSeccion(id, seccion)}
+              onClick={() => manejarEnlace(enlace)}
             >
-              {label}
+              {enlace.label}
             </button>
           ))}
         </nav>
 
         <div className="sidebar-drawer__footer">
-          <button type="button" className="sidebar-admin-link" onClick={irAdmin}>
-            Panel de administración
-          </button>
           <WidgetEstadoPremium estaAbierto={estaAbierto} />
         </div>
       </aside>
