@@ -191,26 +191,34 @@ export default function Reservas({ setPaginaActual }) {
       })
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/reservas`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        nombre: nombre.trim(),
-        email: email.trim(),
-        fecha,
-        turno,
-      }),
-    })
+    const controller = new AbortController()
+    const timeoutId = window.setTimeout(() => controller.abort(), 30_000)
 
-    const data = await response.json().catch(() => ({}))
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/reservas`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          nombre: nombre.trim(),
+          email: email.trim(),
+          fecha,
+          turno,
+        }),
+        signal: controller.signal,
+      })
 
-    if (!response.ok) {
-      throw new Error(data?.error || 'No pudimos completar la reserva. Inténtalo de nuevo.')
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'No pudimos completar la reserva. Inténtalo de nuevo.')
+      }
+
+      return data
+    } finally {
+      window.clearTimeout(timeoutId)
     }
-
-    return data
   }
 
   const handleSubmit = async (e) => {
@@ -252,11 +260,13 @@ export default function Reservas({ setPaginaActual }) {
         mesasRestantes: restantes,
       })
     } catch (error) {
-      setErrorMsg(
-        error.message === 'Failed to fetch'
-          ? 'No hay conexión con el servidor. En Vercel hace falta desplegar el backend y configurar VITE_API_URL.'
-          : error.message,
-      )
+      const mensaje =
+        error.name === 'AbortError'
+          ? 'El servidor tardó demasiado. Si la reserva se confirmó, revisa tu correo; si no, inténtalo de nuevo.'
+          : error.message === 'Failed to fetch'
+            ? 'No hay conexión con el servidor. Comprueba que Render esté activo (abre /api/health).'
+            : error.message
+      setErrorMsg(mensaje)
     } finally {
       setEnviando(false)
     }

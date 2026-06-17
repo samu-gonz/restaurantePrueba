@@ -201,17 +201,73 @@ const aforoPorTurno = new Map()
 const reservasRegistradas = []
 
 const emailUser = process.env.EMAIL_USER
-const emailPass = process.env.EMAIL_PASS
+const emailPass = process.env.EMAIL_PASS?.replace(/\s/g, '')
 const transporter =
   emailUser && emailPass
     ? nodemailer.createTransport({
-        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
         auth: { user: emailUser, pass: emailPass },
+        connectionTimeout: 12_000,
+        greetingTimeout: 12_000,
+        socketTimeout: 15_000,
       })
     : null
 const emailFromAddress = emailUser
   ? `"El Realejo Tascas" <${emailUser}>`
   : null
+
+async function enviarCorreosReserva({
+  nombre,
+  email,
+  fecha,
+  turno,
+  localizador,
+}) {
+  if (!transporter) {
+    console.warn('[email] Transporter no configurado (EMAIL_USER / EMAIL_PASS)')
+    return
+  }
+
+  const htmlCliente = plantillaBaseReserva({
+    titulo: 'El Realejo Tascas',
+    subtitulo: 'Tu reserva está confirmada. ¡Gracias por elegirnos!',
+    nombre,
+    email,
+    fecha,
+    turno,
+    localizador,
+  })
+
+  const htmlDueno = plantillaBaseReserva({
+    titulo: 'Nueva reserva registrada',
+    subtitulo: 'Aviso interno para equipo de gestión del restaurante.',
+    nombre,
+    email,
+    fecha,
+    turno,
+    localizador,
+  })
+
+  const [infoCliente, infoDueno] = await Promise.all([
+    transporter.sendMail({
+      from: emailFromAddress,
+      to: email,
+      subject: `¡Reserva Confirmada! 🍷 El Realejo Tascas - Localizador ${localizador}`,
+      html: htmlCliente,
+    }),
+    transporter.sendMail({
+      from: emailFromAddress,
+      to: CORREO_DUENO,
+      subject: `🚨 NUEVA RESERVA RECIBIDA - ${localizador}`,
+      html: htmlDueno,
+    }),
+  ])
+
+  console.log('📬 Correo de cliente enviado:', infoCliente.response)
+  console.log('🏪 Correo de dueño enviado:', infoDueno.response)
+}
 
 function normalizarTexto(valor) {
   return String(valor ?? '').trim()
@@ -419,53 +475,7 @@ app.post('/api/reservas', async (req, res) => {
     createdAt: new Date().toISOString(),
   })
 
-  try {
-    if (!transporter) {
-      throw new Error('Correo no configurado. Define EMAIL_USER y EMAIL_PASS en backend/.env')
-    }
-
-    const htmlCliente = plantillaBaseReserva({
-      titulo: 'El Realejo Tascas',
-      subtitulo: 'Tu reserva está confirmada. ¡Gracias por elegirnos!',
-      nombre: nombreNormalizado,
-      email: emailNormalizado,
-      fecha: fechaNormalizada,
-      turno: turnoNormalizado,
-      localizador,
-    })
-
-    const htmlDueno = plantillaBaseReserva({
-      titulo: 'Nueva reserva registrada',
-      subtitulo: 'Aviso interno para equipo de gestión del restaurante.',
-      nombre: nombreNormalizado,
-      email: emailNormalizado,
-      fecha: fechaNormalizada,
-      turno: turnoNormalizado,
-      localizador,
-    })
-
-    const [infoCliente, infoDueno] = await Promise.all([
-      transporter.sendMail({
-        from: emailFromAddress,
-        to: emailNormalizado,
-        subject: `¡Reserva Confirmada! 🍷 El Realejo Tascas - Localizador ${localizador}`,
-        html: htmlCliente,
-      }),
-      transporter.sendMail({
-        from: emailFromAddress,
-        to: CORREO_DUENO,
-        subject: `🚨 NUEVA RESERVA RECIBIDA - ${localizador}`,
-        html: htmlDueno,
-      }),
-    ])
-
-    console.log('📬 Correo de cliente enviado:', infoCliente.response)
-    console.log('🏪 Correo de dueño enviado:', infoDueno.response)
-  } catch (error) {
-    console.error('Fallo al enviar correos:', error)
-  }
-
-  return res.status(201).json({
+  res.status(201).json({
     ok: true,
     localizador,
     reserva: {
@@ -479,6 +489,16 @@ app.post('/api/reservas', async (req, res) => {
       maximo: MESAS_MAX,
       clave,
     },
+  })
+
+  void enviarCorreosReserva({
+    nombre: nombreNormalizado,
+    email: emailNormalizado,
+    fecha: fechaNormalizada,
+    turno: turnoNormalizado,
+    localizador,
+  }).catch((error) => {
+    console.error('Fallo al enviar correos:', error)
   })
 })
 
