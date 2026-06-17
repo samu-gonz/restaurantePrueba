@@ -16,6 +16,9 @@ const CORS_ORIGINS = [
 const CORS_LOCAL_REGEX = /^https?:\/\/(localhost|127\.0\.0\.1):\d+$/
 const CORS_VERCEL_REGEX = /^https:\/\/[a-z0-9-]+\.vercel\.app$/
 const CORREO_DUENO = 'samuelgonz2006@gmail.com'
+const RESEND_API_KEY = process.env.RESEND_API_KEY
+const RESEND_FROM_EMAIL =
+  process.env.RESEND_FROM_EMAIL ?? 'El Realejo Tascas <onboarding@resend.dev>'
 
 // 14 platos ampliados
 const menuData = [
@@ -218,6 +221,42 @@ const emailFromAddress = emailUser
   ? `"El Realejo Tascas" <${emailUser}>`
   : null
 
+async function enviarConResend({ to, subject, html }) {
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: RESEND_FROM_EMAIL,
+      to: [to],
+      subject,
+      html,
+    }),
+  })
+
+  if (!response.ok) {
+    const detalle = await response.text()
+    throw new Error(`Resend ${response.status}: ${detalle}`)
+  }
+
+  return response.json()
+}
+
+async function enviarConGmail({ to, subject, html }) {
+  if (!transporter) {
+    throw new Error('Gmail no configurado (EMAIL_USER / EMAIL_PASS)')
+  }
+
+  return transporter.sendMail({
+    from: emailFromAddress,
+    to,
+    subject,
+    html,
+  })
+}
+
 async function enviarCorreosReserva({
   nombre,
   email,
@@ -225,11 +264,6 @@ async function enviarCorreosReserva({
   turno,
   localizador,
 }) {
-  if (!transporter) {
-    console.warn('[email] Transporter no configurado (EMAIL_USER / EMAIL_PASS)')
-    return
-  }
-
   const htmlCliente = plantillaBaseReserva({
     titulo: 'El Realejo Tascas',
     subtitulo: 'Tu reserva está confirmada. ¡Gracias por elegirnos!',
@@ -250,23 +284,18 @@ async function enviarCorreosReserva({
     localizador,
   })
 
+  const subjectCliente = `¡Reserva Confirmada! 🍷 El Realejo Tascas - Localizador ${localizador}`
+  const subjectDueno = `🚨 NUEVA RESERVA RECIBIDA - ${localizador}`
+
+  const enviar = RESEND_API_KEY ? enviarConResend : enviarConGmail
+
   const [infoCliente, infoDueno] = await Promise.all([
-    transporter.sendMail({
-      from: emailFromAddress,
-      to: email,
-      subject: `¡Reserva Confirmada! 🍷 El Realejo Tascas - Localizador ${localizador}`,
-      html: htmlCliente,
-    }),
-    transporter.sendMail({
-      from: emailFromAddress,
-      to: CORREO_DUENO,
-      subject: `🚨 NUEVA RESERVA RECIBIDA - ${localizador}`,
-      html: htmlDueno,
-    }),
+    enviar({ to: email, subject: subjectCliente, html: htmlCliente }),
+    enviar({ to: CORREO_DUENO, subject: subjectDueno, html: htmlDueno }),
   ])
 
-  console.log('📬 Correo de cliente enviado:', infoCliente.response)
-  console.log('🏪 Correo de dueño enviado:', infoDueno.response)
+  console.log('📬 Correo de cliente enviado:', infoCliente?.id ?? infoCliente?.response)
+  console.log('🏪 Correo de dueño enviado:', infoDueno?.id ?? infoDueno?.response)
 }
 
 function normalizarTexto(valor) {
@@ -505,5 +534,12 @@ app.post('/api/reservas', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Backend Guachinche El Realejo listo en http://localhost:${PORT}`)
   console.log('CORS activo para:', CORS_ORIGINS.join(', ') || '(ningún origen configurado)')
+  if (RESEND_API_KEY) {
+    console.log('[email] Resend activo →', RESEND_FROM_EMAIL)
+  } else if (transporter) {
+    console.log('[email] Gmail SMTP activo →', emailUser)
+  } else {
+    console.warn('[email] Sin proveedor configurado. Añade RESEND_API_KEY o EMAIL_USER/EMAIL_PASS')
+  }
 })
 

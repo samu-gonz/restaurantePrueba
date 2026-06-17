@@ -12,6 +12,10 @@ services:
         value: "20"
       - key: FRONTEND_URL
         value: https://restaurante-prueba-chi.vercel.app
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        value: El Realejo Tascas <onboarding@resend.dev>
       - key: EMAIL_USER
         sync: false
       - key: EMAIL_PASS
