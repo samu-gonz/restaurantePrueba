@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { CONFIG_RESTAURANTE, formatearPrecio, menuData } from '../data/db'
 import './Chatbot.css'
 
@@ -309,7 +310,7 @@ export default function Chatbot({ setPaginaActual }) {
     enviarMensaje(entrada)
   }
 
-  return (
+  const widget = (
     <div className="chatbot-root" aria-live="polite">
       <button
         type="button"
@@ -389,4 +390,6 @@ export default function Chatbot({ setPaginaActual }) {
       </div>
     </div>
   )
+
+  return createPortal(widget, document.body)
 }

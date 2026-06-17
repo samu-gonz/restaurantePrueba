@@ -1,13 +1,24 @@
+/* Portal en document.body — fixed fiable en iPad/Safari */
 .chatbot-root {
   position: fixed;
-  bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  top: auto;
+  left: auto;
   right: calc(1.25rem + env(safe-area-inset-right, 0px));
-  z-index: 1000;
+  bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  z-index: 9999;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-end;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
   font-family: var(--font-body, system-ui, sans-serif);
-  transform: translate3d(0, 0, 0);
-  -webkit-transform: translate3d(0, 0, 0);
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
+}
+
+.chatbot-fab,
+.chatbot-panel {
+  pointer-events: auto;
 }
 
 /* Botón flotante */
@@ -15,6 +26,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   width: 3.75rem;
   height: 3.75rem;
   padding: 0;
@@ -27,6 +39,8 @@
     0 8px 24px rgba(155, 17, 30, 0.45),
     0 4px 12px rgba(0, 0, 0, 0.35);
   transition:
+    opacity 0.3s ease,
+    visibility 0.3s ease,
     transform 0.3s ease,
     box-shadow 0.3s ease,
     background-color 0.3s ease;
@@ -59,8 +73,7 @@
   width: 360px;
   max-width: calc(100vw - 2rem);
   height: 450px;
-  max-height: calc(100vh - 6rem);
-  max-height: calc(100dvh - 6rem);
+  max-height: calc(100dvh - 6rem - env(safe-area-inset-bottom, 0px));
   overflow: hidden;
   background: #161616;
   border: 1px solid #262626;
@@ -143,6 +156,7 @@
   padding: 1rem;
   overflow-y: auto;
   scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
 }
 
 .chatbot-panel__body::-webkit-scrollbar {
@@ -489,21 +503,22 @@
   cursor: not-allowed;
 }
 
+/* iPad y móvil */
 @media (max-width: 64rem) {
   .chatbot-root {
-    bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
     right: calc(1rem + env(safe-area-inset-right, 0px));
+    bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
   }
 
   .chatbot-panel {
-    width: min(360px, calc(100vw - 2rem));
-    height: min(450px, calc(100dvh - 5rem - env(safe-area-inset-bottom, 0px)));
-    max-height: calc(100dvh - 5rem - env(safe-area-inset-bottom, 0px));
+    width: min(360px, calc(100vw - 2rem - env(safe-area-inset-right, 0px)));
+    height: min(420px, calc(100dvh - 7rem - env(safe-area-inset-bottom, 0px)));
+    max-height: calc(100dvh - 7rem - env(safe-area-inset-bottom, 0px));
   }
 }
 
 @media (max-width: 30rem) {
   .chatbot-panel {
-    width: calc(100vw - 2rem);
+    width: calc(100vw - 2rem - env(safe-area-inset-right, 0px));
   }
 }
