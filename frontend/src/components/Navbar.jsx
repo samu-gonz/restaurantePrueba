@@ -21,7 +21,6 @@ const ENLACES_NAV = [
   { id: 'carta', label: 'Carta', tipo: 'seccion', seccion: 'carta-digital' },
   { id: 'reservas', label: 'Reservar Mesa', tipo: 'pagina', pagina: 'reservas' },
   { id: 'admin', label: 'Panel Admin', tipo: 'pagina', pagina: 'admin' },
-  { id: 'contacto', label: 'Contacto', tipo: 'seccion', seccion: 'contacto' },
   { id: 'chat', label: 'Asistente virtual', tipo: 'chat' },
 ]
 
