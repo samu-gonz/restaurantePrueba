@@ -1,27 +1,17 @@
-/* Portal en document.body — fixed fiable en iPad/Safari */
+/* Panel anclado bajo la barra superior (botón en Navbar) */
 .chatbot-root {
   position: fixed;
-  top: auto;
+  top: calc(var(--nav-height) + env(safe-area-inset-top, 0px) + 0.5rem);
+  right: calc(1rem + env(safe-area-inset-right, 0px));
+  bottom: auto;
   left: auto;
-  right: calc(1.25rem + env(safe-area-inset-right, 0px));
-  bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
   z-index: 9999;
-  display: flex;
-  flex-direction: column-reverse;
-  align-items: flex-end;
-  gap: 0.75rem;
   margin: 0;
   padding: 0;
-  pointer-events: none;
   font-family: var(--font-body, system-ui, sans-serif);
 }
 
-.chatbot-fab,
-.chatbot-panel {
-  pointer-events: auto;
-}
-
-/* Botón flotante */
+/* Botón flotante (legacy — ya no se usa; icono en Navbar) */
 .chatbot-fab {
   display: flex;
   align-items: center;
@@ -72,27 +62,29 @@
   flex-direction: column;
   width: 360px;
   max-width: calc(100vw - 2rem);
-  height: 450px;
-  max-height: calc(100dvh - 6rem - env(safe-area-inset-bottom, 0px));
+  height: min(450px, calc(100dvh - var(--nav-height) - 2rem - env(safe-area-inset-top, 0px)));
+  max-height: calc(100dvh - var(--nav-height) - 2rem - env(safe-area-inset-top, 0px));
   overflow: hidden;
   background: #161616;
   border: 1px solid #262626;
   border-radius: 16px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(12px) scale(0.96);
-  transform-origin: bottom right;
-  transition:
-    opacity 0.35s ease,
-    visibility 0.35s ease,
-    transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.chatbot-panel--open {
   opacity: 1;
   visibility: visible;
   transform: translateY(0) scale(1);
+  transform-origin: top right;
+  animation: chatbot-panel-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes chatbot-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .chatbot-panel__header {
@@ -506,14 +498,14 @@
 /* iPad y móvil */
 @media (max-width: 64rem) {
   .chatbot-root {
-    right: calc(1rem + env(safe-area-inset-right, 0px));
-    bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    right: calc(0.75rem + env(safe-area-inset-right, 0px));
+    top: calc(var(--nav-height) + env(safe-area-inset-top, 0px) + 0.35rem);
   }
 
   .chatbot-panel {
-    width: min(360px, calc(100vw - 2rem - env(safe-area-inset-right, 0px)));
-    height: min(420px, calc(100dvh - 7rem - env(safe-area-inset-bottom, 0px)));
-    max-height: calc(100dvh - 7rem - env(safe-area-inset-bottom, 0px));
+    width: min(360px, calc(100vw - 1.5rem - env(safe-area-inset-right, 0px)));
+    height: min(420px, calc(100dvh - var(--nav-height) - 1.5rem - env(safe-area-inset-top, 0px)));
+    max-height: calc(100dvh - var(--nav-height) - 1.5rem - env(safe-area-inset-top, 0px));
   }
 }
 

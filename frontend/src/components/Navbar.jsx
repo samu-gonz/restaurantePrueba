@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { IconoChat } from './Chatbot'
 import './Navbar.css'
 
 /* ── Horario de apertura ─────────────────────────────────────────────────── */
@@ -87,7 +88,7 @@ function WidgetEstadoPremium({ estaAbierto }) {
 /**
  * Navbar fijo con glassmorphism + sidebar drawer izquierdo.
  */
-export default function Navbar({ paginaActual, setPaginaActual }) {
+export default function Navbar({ paginaActual, setPaginaActual, chatAbierto, onToggleChat }) {
   const [estaAbierto, setEstaAbierto] = useState(() => comprobarApertura())
   const [menuAbierto, setMenuAbierto] = useState(false)
   const [seccionActiva, setSeccionActiva] = useState('inicio-carta')
@@ -185,13 +186,28 @@ export default function Navbar({ paginaActual, setPaginaActual }) {
             </button>
           </div>
 
-          <button
-            type="button"
-            className={`btn-premium navbar-float__cta ${paginaActual === 'reservas' ? 'navbar-cta--active' : ''}`}
-            onClick={irReservas}
-          >
-            Reservar Mesa
-          </button>
+          <div className="navbar-float__end">
+            <button
+              type="button"
+              className={
+                chatAbierto ? 'navbar-chat-btn navbar-chat-btn--active' : 'navbar-chat-btn'
+              }
+              aria-label={chatAbierto ? 'Cerrar asistente virtual' : 'Abrir asistente virtual'}
+              aria-expanded={chatAbierto}
+              aria-controls="chatbot-panel"
+              onClick={onToggleChat}
+            >
+              <IconoChat />
+            </button>
+
+            <button
+              type="button"
+              className={`btn-premium navbar-float__cta ${paginaActual === 'reservas' ? 'navbar-cta--active' : ''}`}
+              onClick={irReservas}
+            >
+              Reservar Mesa
+            </button>
+          </div>
         </div>
       </nav>
 

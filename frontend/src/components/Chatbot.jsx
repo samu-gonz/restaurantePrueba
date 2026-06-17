@@ -191,7 +191,7 @@ function resolverRespuesta(textoUsuario, { irReservas }) {
   }
 }
 
-function IconoChat() {
+export function IconoChat() {
   return (
     <svg
       className="chatbot-fab__icon"
@@ -249,11 +249,10 @@ function BurbujaMensaje({ mensaje }) {
 }
 
 /**
- * Asistente virtual con Rich Cards — Guachinche El Realejo.
- * @param {{ setPaginaActual?: (pagina: string) => void }} props
+ * Panel del asistente virtual (el botón de apertura está en el Navbar).
+ * @param {{ setPaginaActual?: (pagina: string) => void, abierto: boolean, setAbierto: (v: boolean) => void }} props
  */
-export default function Chatbot({ setPaginaActual }) {
-  const [abierto, setAbierto] = useState(false)
+export default function Chatbot({ setPaginaActual, abierto, setAbierto }) {
   const [mensajes, setMensajes] = useState([
     {
       id: 'bienvenida',
@@ -275,11 +274,22 @@ export default function Chatbot({ setPaginaActual }) {
     scrollAbajo()
   }, [mensajes, escribiendo, scrollAbajo])
 
+  useEffect(() => {
+    if (!abierto) return undefined
+
+    const onEscape = (e) => {
+      if (e.key === 'Escape') setAbierto(false)
+    }
+
+    window.addEventListener('keydown', onEscape)
+    return () => window.removeEventListener('keydown', onEscape)
+  }, [abierto, setAbierto])
+
   const irReservas = useCallback(() => {
     setPaginaActual?.('reservas')
     setAbierto(false)
     window.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [setPaginaActual])
+  }, [setPaginaActual, setAbierto])
 
   const enviarMensaje = useCallback(
     (textoRaw) => {
@@ -310,25 +320,16 @@ export default function Chatbot({ setPaginaActual }) {
     enviarMensaje(entrada)
   }
 
+  if (!abierto) return null
+
   const widget = (
     <div className="chatbot-root" aria-live="polite">
-      <button
-        type="button"
-        className={abierto ? 'chatbot-fab chatbot-fab--hidden' : 'chatbot-fab'}
-        aria-label="Abrir asistente virtual"
-        aria-expanded={abierto}
-        aria-controls="chatbot-panel"
-        onClick={() => setAbierto(true)}
-      >
-        <IconoChat />
-      </button>
-
       <div
         id="chatbot-panel"
-        className={abierto ? 'chatbot-panel chatbot-panel--open' : 'chatbot-panel'}
+        className="chatbot-panel chatbot-panel--open"
         role="dialog"
         aria-label="Asistente El Realejo"
-        aria-hidden={!abierto}
+        aria-modal="true"
       >
         <header className="chatbot-panel__header">
           <div>

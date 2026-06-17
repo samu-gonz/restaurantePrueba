@@ -11,9 +11,11 @@ import Reservas from './pages/Reservas'
  */
 export default function App() {
   const [paginaActual, setPaginaActual] = useState('home')
+  const [chatAbierto, setChatAbierto] = useState(false)
 
   const cambiarPagina = (pagina) => {
     setPaginaActual(pagina)
+    setChatAbierto(false)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -23,7 +25,12 @@ export default function App() {
         Saltar al contenido
       </a>
 
-      <Navbar paginaActual={paginaActual} setPaginaActual={cambiarPagina} />
+      <Navbar
+        paginaActual={paginaActual}
+        setPaginaActual={cambiarPagina}
+        chatAbierto={chatAbierto}
+        onToggleChat={() => setChatAbierto((prev) => !prev)}
+      />
 
       <main id="contenido">
         {paginaActual === 'home' && <Home setPaginaActual={cambiarPagina} />}
@@ -35,7 +42,11 @@ export default function App() {
         © 2026 Guachinche El Realejo. Proyecto de Portfolio de Desarrollo Web.
       </footer>
 
-      <Chatbot setPaginaActual={cambiarPagina} />
+      <Chatbot
+        setPaginaActual={cambiarPagina}
+        abierto={chatAbierto}
+        setAbierto={setChatAbierto}
+      />
     </div>
   )
 }
