@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import { API_BASE_URL } from '../config/api'
+import { API_BASE_URL, backendConfigurado } from '../config/api'
 import { CONFIG_RESTAURANTE } from '../data/db'
+import {
+  consultarDisponibilidadLocal,
+  crearReservaLocal,
+} from '../utils/reservasStorage'
 
 /* ── Constantes de negocio ─────────────────────────────────────────────────── */
 
@@ -68,12 +72,16 @@ export default function Reservas({ setPaginaActual }) {
   const handleCheckAforo = useCallback(
     async (fechaSel, turnoSel) => {
       try {
-        const params = new URLSearchParams({ fecha: fechaSel, turno: turnoSel })
-        const response = await fetch(`${API_BASE_URL}/api/disponibilidad?${params.toString()}`)
-        const data = await response.json().catch(() => ({}))
-
-        if (!response.ok) {
-          throw new Error(data?.error || 'No se pudo consultar el aforo en tiempo real.')
+        let data
+        if (!backendConfigurado()) {
+          data = consultarDisponibilidadLocal(fechaSel, turnoSel)
+        } else {
+          const params = new URLSearchParams({ fecha: fechaSel, turno: turnoSel })
+          const response = await fetch(`${API_BASE_URL}/api/disponibilidad?${params.toString()}`)
+          data = await response.json().catch(() => ({}))
+          if (!response.ok) {
+            throw new Error(data?.error || 'No se pudo consultar el aforo en tiempo real.')
+          }
         }
 
         setStatusAforo(data)
@@ -82,7 +90,9 @@ export default function Reservas({ setPaginaActual }) {
         setStatusAforo(null)
         setMesasLibres(null)
         setErrorMsg(
-          error.message || 'No pudimos consultar disponibilidad en este momento. Revisa tu conexión.',
+          error.message === 'Failed to fetch'
+            ? 'No hay conexión con el servidor. Configura VITE_API_URL en Vercel o usa la web en local.'
+            : error.message || 'No pudimos consultar disponibilidad en este momento.',
         )
       }
     },
@@ -96,6 +106,14 @@ export default function Reservas({ setPaginaActual }) {
     }
 
     try {
+      if (!backendConfigurado()) {
+        setDisponibilidadTurnos({
+          almuerzo: consultarDisponibilidadLocal(fechaSel, 'almuerzo'),
+          cena: consultarDisponibilidadLocal(fechaSel, 'cena'),
+        })
+        return
+      }
+
       const [resAlmuerzo, resCena] = await Promise.all([
         fetch(`${API_BASE_URL}/api/disponibilidad?${new URLSearchParams({ fecha: fechaSel, turno: 'almuerzo' }).toString()}`),
         fetch(`${API_BASE_URL}/api/disponibilidad?${new URLSearchParams({ fecha: fechaSel, turno: 'cena' }).toString()}`),
@@ -111,7 +129,10 @@ export default function Reservas({ setPaginaActual }) {
         cena: resCena.ok ? dataCena : null,
       })
     } catch {
-      setDisponibilidadTurnos({ almuerzo: null, cena: null })
+      setDisponibilidadTurnos({
+        almuerzo: consultarDisponibilidadLocal(fechaSel, 'almuerzo'),
+        cena: consultarDisponibilidadLocal(fechaSel, 'cena'),
+      })
     }
   }, [])
 
@@ -161,6 +182,15 @@ export default function Reservas({ setPaginaActual }) {
   }
 
   const ejecutarReserva = async () => {
+    if (!backendConfigurado()) {
+      return crearReservaLocal({
+        nombre: nombre.trim(),
+        email: email.trim(),
+        fecha,
+        turno,
+      })
+    }
+
     const response = await fetch(`${API_BASE_URL}/api/reservas`, {
       method: 'POST',
       headers: {
@@ -222,7 +252,11 @@ export default function Reservas({ setPaginaActual }) {
         mesasRestantes: restantes,
       })
     } catch (error) {
-      setErrorMsg(error.message)
+      setErrorMsg(
+        error.message === 'Failed to fetch'
+          ? 'No hay conexión con el servidor. En Vercel hace falta desplegar el backend y configurar VITE_API_URL.'
+          : error.message,
+      )
     } finally {
       setEnviando(false)
     }
@@ -251,7 +285,10 @@ export default function Reservas({ setPaginaActual }) {
       <div className="reservas-card">
         <h2 className="reservas-card__title">Reserva tu Mesa</h2>
         <p className="reservas-card__subtitle">
-          Máximo {MESAS_MAX} mesas por turno. Gestión en tiempo real con el servidor.
+          Máximo {MESAS_MAX} mesas por turno.
+          {backendConfigurado()
+            ? ' Gestión en tiempo real con el servidor.'
+            : ' Modo demo: reservas guardadas en tu navegador (sin correo).'}
         </p>
 
         {exito ? (
@@ -262,7 +299,15 @@ export default function Reservas({ setPaginaActual }) {
               turno de {exito.turno}.
             </p>
             <p className="text-muted" style={{ fontSize: '0.9rem' }}>
-              Confirmación enviada a: <strong>{exito.email}</strong>
+              {backendConfigurado() ? (
+                <>
+                  Confirmación enviada a: <strong>{exito.email}</strong>
+                </>
+              ) : (
+                <>
+                  Reserva guardada localmente. Email registrado: <strong>{exito.email}</strong>
+                </>
+              )}
             </p>
             <div className="reservas-exito__locator">LOCALIZADOR: {exito.localizador}</div>
             {typeof exito.mesasRestantes === 'number' && (

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
-import { API_BASE_URL } from '../config/api'
+import { API_BASE_URL, backendConfigurado } from '../config/api'
+import { cargarReservasDesdeStorage } from '../utils/reservasStorage'
 
 function formatearFecha(fechaISO) {
   if (!fechaISO) return '—'
@@ -25,6 +26,18 @@ export default function Admin() {
       try {
         setLoading(true)
         setError('')
+
+        if (!backendConfigurado()) {
+          const locales = cargarReservasDesdeStorage()
+          setReservas(
+            locales.slice().sort((a, b) => {
+              if (a.fecha === b.fecha) return a.turno.localeCompare(b.turno)
+              return a.fecha.localeCompare(b.fecha)
+            }),
+          )
+          return
+        }
+
         const response = await fetch(`${API_BASE_URL}/api/admin/reservas`, {
           signal: controller.signal,
         })
