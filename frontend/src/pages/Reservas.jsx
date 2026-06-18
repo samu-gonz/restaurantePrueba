@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { API_BASE_URL, backendConfigurado } from '../config/api'
 import { CONFIG_RESTAURANTE } from '../data/db'
 import {
+  consumirPrefillReserva,
   consultarDisponibilidadLocal,
   crearReservaLocal,
 } from '../utils/reservasStorage'
@@ -48,6 +49,26 @@ export default function Reservas({ setPaginaActual }) {
     almuerzo: null,
     cena: null,
   })
+
+  useEffect(() => {
+    const aplicarPrefill = ({ fecha: fechaPrefill, turno: turnoPrefill }) => {
+      if (!fechaPrefill) return
+      setFecha(fechaPrefill)
+      setTurno(turnoPrefill === 'almuerzo' ? 'almuerzo' : 'cena')
+      setExito(null)
+      setErrorMsg('')
+    }
+
+    const prefillGuardado = consumirPrefillReserva()
+    if (prefillGuardado) aplicarPrefill(prefillGuardado)
+
+    const onPrefillDesdeChat = (evento) => {
+      aplicarPrefill(evento.detail ?? {})
+    }
+
+    window.addEventListener('reserva-prefill', onPrefillDesdeChat)
+    return () => window.removeEventListener('reserva-prefill', onPrefillDesdeChat)
+  }, [])
 
   /** Validación rápida en frontend (el backend vuelve a validar siempre) */
   const validarDisponibilidad = useCallback(

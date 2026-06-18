@@ -16,6 +16,48 @@ function formatearFechaISO(fecha) {
   return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`
 }
 
+const DIAS_SEMANA = {
+  domingo: 0,
+  lunes: 1,
+  martes: 2,
+  miercoles: 3,
+  jueves: 4,
+  viernes: 5,
+  sabado: 6,
+}
+
+function parsearDiaSemanaDesdeTexto(textoNormalizado) {
+  const diaEncontrado = Object.entries(DIAS_SEMANA).find(([nombre]) => {
+    const patronDia = new RegExp(`\\b${nombre}\\b`)
+    return patronDia.test(textoNormalizado)
+  })
+
+  if (!diaEncontrado) return null
+
+  const diaObjetivo = diaEncontrado[1]
+  const hoy = new Date()
+  const diaActual = hoy.getDay()
+  let diasHasta = (diaObjetivo - diaActual + 7) % 7
+
+  if (/\bproxim[oa]\b/.test(textoNormalizado) && diasHasta === 0) {
+    diasHasta = 7
+  }
+
+  const fechaResultado = new Date(hoy)
+  fechaResultado.setDate(hoy.getDate() + diasHasta)
+  return formatearFechaISO(fechaResultado)
+}
+
+function textoMencionaFecha(textoNormalizado) {
+  return (
+    /\bhoy\b/.test(textoNormalizado) ||
+    /\bmanana\b/.test(textoNormalizado) ||
+    /\bpasado manana\b/.test(textoNormalizado) ||
+    /\b(\d{1,2})[\/\-](\d{1,2})/.test(textoNormalizado) ||
+    Object.keys(DIAS_SEMANA).some((nombre) => new RegExp(`\\b${nombre}\\b`).test(textoNormalizado))
+  )
+}
+
 function parsearFechaLocal(fechaISO) {
   const [anio, mes, dia] = fechaISO.split('-').map(Number)
   return new Date(anio, mes - 1, dia)
@@ -101,6 +143,11 @@ export function parsearFechaDesdeTexto(texto) {
     return formatearFechaISO(new Date(anio, mes - 1, dia))
   }
 
+  const diaSemana = parsearDiaSemanaDesdeTexto(textoNormalizado)
+  if (diaSemana) return diaSemana
+
+  if (textoMencionaFecha(textoNormalizado)) return null
+
   return formatearFechaISO(new Date())
 }
 
@@ -173,7 +220,13 @@ export function esConsultaDisponibilidad(texto) {
 export function interpretarConsultaDisponibilidad(texto) {
   if (!esConsultaDisponibilidad(texto)) return null
 
-  const fecha = parsearFechaDesdeTexto(texto)
+  const textoNormalizado = normalizarTexto(texto)
+  const fecha =
+    parsearFechaDesdeTexto(texto) ??
+    (textoMencionaFecha(textoNormalizado) ? null : formatearFechaISO(new Date()))
+
+  if (!fecha) return null
+
   const hora = parsearHoraDesdeTexto(texto)
 
   if (hora) {
@@ -187,7 +240,6 @@ export function interpretarConsultaDisponibilidad(texto) {
     }
   }
 
-  const textoNormalizado = normalizarTexto(texto)
   if (textoNormalizado.includes('almuerzo') || textoNormalizado.includes('comida')) {
     return { fecha, turno: 'almuerzo', hora: null, dentroHorario: true, avisoHorario: null }
   }

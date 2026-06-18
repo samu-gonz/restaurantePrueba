@@ -14,6 +14,34 @@ import {
 
 export const STORAGE_KEY_AFORO = 'reservas_guachinche'
 export const STORAGE_KEY_LISTA = 'reservas_lista_guachinche'
+export const STORAGE_KEY_PREFILL = 'reserva_prefill_guachinche'
+
+export function guardarPrefillReserva({ fecha, turno }) {
+  if (!fecha) return
+  sessionStorage.setItem(
+    STORAGE_KEY_PREFILL,
+    JSON.stringify({
+      fecha,
+      turno: turno === 'almuerzo' ? 'almuerzo' : 'cena',
+    }),
+  )
+}
+
+export function consumirPrefillReserva() {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY_PREFILL)
+    if (!raw) return null
+    sessionStorage.removeItem(STORAGE_KEY_PREFILL)
+    const parsed = JSON.parse(raw)
+    if (!parsed?.fecha) return null
+    return {
+      fecha: parsed.fecha,
+      turno: parsed.turno === 'almuerzo' ? 'almuerzo' : 'cena',
+    }
+  } catch {
+    return null
+  }
+}
 
 function calcularEstadoAforo(mesasLibres) {
   if (mesasLibres <= 0) return 'completo'

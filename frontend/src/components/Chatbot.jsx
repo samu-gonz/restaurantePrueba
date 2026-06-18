@@ -11,6 +11,7 @@ import {
   interpretarConsultaDisponibilidad,
   obtenerDisponibilidadRemota,
 } from '../utils/disponibilidadConsulta'
+import { guardarPrefillReserva } from '../utils/reservasStorage'
 import './Chatbot.css'
 
 const COLOR_VINO = '#9B111E'
@@ -76,9 +77,9 @@ function CarruselPlatos({ platos }) {
   )
 }
 
-function BotonIrReservas({ onClick }) {
+function BotonIrReservas({ onClick, consulta = null }) {
   return (
-    <button type="button" className="chatbot-rich-btn" onClick={onClick}>
+    <button type="button" className="chatbot-rich-btn" onClick={() => onClick(consulta)}>
       📅 Ir a Reservas
     </button>
   )
@@ -125,7 +126,7 @@ function TarjetaDisponibilidad({ consulta, resultado, onReservar }) {
         </div>
       </dl>
       {resultado.estado !== 'completo' && (
-        <button type="button" className="chatbot-rich-btn" onClick={onReservar}>
+        <button type="button" className="chatbot-rich-btn" onClick={() => onReservar(consulta)}>
           📅 Reservar ahora
         </button>
       )}
@@ -425,7 +426,15 @@ export default function Chatbot({ setPaginaActual, abierto, setAbierto }) {
     return () => window.removeEventListener('keydown', onEscape)
   }, [abierto, setAbierto])
 
-  const irReservas = useCallback(() => {
+  const irReservas = useCallback((consulta = null) => {
+    if (consulta?.fecha) {
+      const prefill = {
+        fecha: consulta.fecha,
+        turno: consulta.turno ?? 'cena',
+      }
+      guardarPrefillReserva(prefill)
+      window.dispatchEvent(new CustomEvent('reserva-prefill', { detail: prefill }))
+    }
     setPaginaActual?.('reservas')
     setAbierto(false)
     window.scrollTo({ top: 0, behavior: 'smooth' })
