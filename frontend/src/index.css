@@ -186,11 +186,35 @@ button:focus-visible {
 
 .app-footer {
   text-align: center;
-  padding: 3rem 2rem;
-  color: #737373;
-  font-size: 0.85rem;
+  padding: 3rem 2rem 2.5rem;
   border-top: 1px solid var(--border-color);
   margin-top: 4rem;
+}
+
+.app-footer__copyright {
+  margin: 0;
+  color: #737373;
+  font-size: 0.85rem;
+}
+
+.app-footer__telefono {
+  display: inline-block;
+  margin-top: 0.65rem;
+  font-size: 0.8125rem;
+  color: #6b6b6b;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+  transition: color 0.2s ease;
+}
+
+.app-footer__telefono:hover {
+  color: #a3a3a3;
+}
+
+.app-footer__telefono:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 3px;
+  border-radius: 4px;
 }
 
 /* ── 3. Utilidades globales ─────────────────────────────────────────────── */

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Chatbot from './components/Chatbot'
+import Footer from './components/Footer'
 import Navbar from './components/Navbar'
 import Admin from './pages/Admin'
 import Home from './pages/Home'
@@ -38,9 +39,7 @@ export default function App() {
         {paginaActual === 'admin' && <Admin />}
       </main>
 
-      <footer className="app-footer">
-        © 2026 Guachinche El Realejo. Proyecto de Portfolio de Desarrollo Web.
-      </footer>
+      <Footer />
 
       <Chatbot
         setPaginaActual={cambiarPagina}
