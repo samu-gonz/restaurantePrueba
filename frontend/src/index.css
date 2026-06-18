@@ -546,32 +546,68 @@ textarea:focus {
 }
 
 .navbar-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  flex: 1;
+  min-width: 0;
   font-weight: 700;
-  font-size: 1.3rem;
+  font-size: 0.78rem;
   color: var(--text-main);
   background: none;
   border: none;
   cursor: pointer;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
   text-align: left;
-  line-height: 1.2;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.05;
+  overflow: visible;
   white-space: nowrap;
 }
 
-@media (max-width: 48rem) {
+.navbar-brand__line {
+  display: block;
+}
+
+.navbar-brand__line--sub {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+}
+
+@media (min-width: 30rem) {
   .navbar-brand {
+    flex-direction: row;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.3em;
     font-size: 1.05rem;
-    max-width: 9.5rem;
+  }
+
+  .navbar-brand__line {
+    display: inline;
+  }
+
+  .navbar-brand__line--sub {
+    font-size: inherit;
+    font-weight: 700;
+    color: var(--text-main);
+    letter-spacing: 0.02em;
   }
 }
 
-@media (min-width: 48rem) and (max-width: 64rem) {
+@media (min-width: 48rem) {
   .navbar-brand {
-    font-size: 1.15rem;
-    max-width: 14rem;
+    flex: 0 1 auto;
+    font-size: 1.2rem;
+    white-space: nowrap;
+  }
+}
+
+@media (min-width: 64rem) {
+  .navbar-brand {
+    font-size: 1.3rem;
   }
 }
 
@@ -2156,9 +2192,9 @@ textarea:focus {
     gap: 0.35rem;
   }
 
-  .navbar-brand {
-    font-size: 0.92rem;
-    max-width: 7.5rem;
+  .navbar-float__start {
+    flex: 1;
+    min-width: 0;
   }
 
   .navbar-float__cta {
@@ -2353,8 +2389,11 @@ textarea:focus {
 
 @media (max-width: 22.5rem) {
   .navbar-brand {
-    font-size: 0.85rem;
-    max-width: 6.5rem;
+    font-size: 0.72rem;
+  }
+
+  .navbar-brand__line--sub {
+    font-size: 0.66rem;
   }
 
   .admin-summary-grid {

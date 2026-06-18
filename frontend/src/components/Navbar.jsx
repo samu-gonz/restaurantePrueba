@@ -210,7 +210,10 @@ export default function Navbar({ paginaActual, setPaginaActual, chatAbierto, onT
             </button>
 
             <button type="button" className="navbar-brand" onClick={irInicio}>
-              EL REALEJO <span className="navbar-brand__dot">•</span> TASCAS
+              <span className="navbar-brand__line">EL REALEJO</span>
+              <span className="navbar-brand__line navbar-brand__line--sub">
+                <span className="navbar-brand__dot">•</span> TASCAS
+              </span>
             </button>
           </div>
 
