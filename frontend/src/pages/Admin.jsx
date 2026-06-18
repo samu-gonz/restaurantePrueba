@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { API_BASE_URL, backendConfigurado } from '../config/api'
+import {
+  cabecerasAdminAutenticado,
+  cerrarSesionAdmin,
+  iniciarSesionAdmin,
+  sesionAdminActiva,
+} from '../utils/adminAuth'
 import { cargarReservasDesdeStorage } from '../utils/reservasStorage'
 
 function formatearFecha(fechaISO) {
@@ -21,7 +27,80 @@ function ordenarReservas(lista) {
   })
 }
 
-export default function Admin() {
+function FormularioLoginAdmin({ onAccesoCorrecto }) {
+  const [usuario, setUsuario] = useState('admin')
+  const [contrasena, setContrasena] = useState('')
+  const [errorLogin, setErrorLogin] = useState('')
+  const [enviando, setEnviando] = useState(false)
+
+  const manejarSubmit = async (evento) => {
+    evento.preventDefault()
+    setErrorLogin('')
+    setEnviando(true)
+
+    try {
+      await iniciarSesionAdmin(usuario, contrasena)
+      onAccesoCorrecto()
+    } catch (error) {
+      setErrorLogin(error.message || 'No se pudo iniciar sesión.')
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  return (
+    <section className="admin-page admin-login" aria-labelledby="admin-login-title">
+      <div className="admin-login__card">
+        <h1 id="admin-login-title" className="admin-page__title">
+          Acceso al personal
+        </h1>
+        <p className="admin-page__subtitle">
+          Introduce tus credenciales para consultar las reservas del restaurante.
+        </p>
+
+        <form className="admin-login__form" onSubmit={manejarSubmit} noValidate>
+          <div className="reservas-field">
+            <label htmlFor="admin-usuario">Usuario</label>
+            <input
+              id="admin-usuario"
+              type="text"
+              autoComplete="username"
+              value={usuario}
+              onChange={(evento) => setUsuario(evento.target.value)}
+              disabled={enviando}
+              required
+            />
+          </div>
+
+          <div className="reservas-field">
+            <label htmlFor="admin-contrasena">Contraseña</label>
+            <input
+              id="admin-contrasena"
+              type="password"
+              autoComplete="current-password"
+              value={contrasena}
+              onChange={(evento) => setContrasena(evento.target.value)}
+              disabled={enviando}
+              required
+            />
+          </div>
+
+          {errorLogin && (
+            <div className="reservas-alert" role="alert">
+              {errorLogin}
+            </div>
+          )}
+
+          <button type="submit" className="btn-premium btn--block" disabled={enviando}>
+            {enviando ? 'Verificando…' : 'Entrar'}
+          </button>
+        </form>
+      </div>
+    </section>
+  )
+}
+
+function PanelReservasAdmin({ onCerrarSesion }) {
   const [reservas, setReservas] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -46,8 +125,15 @@ export default function Admin() {
     try {
       const response = await fetch(`${API_BASE_URL}/api/admin/reservas`, {
         signal: controller.signal,
+        headers: cabecerasAdminAutenticado(),
       })
       const data = await response.json().catch(() => ({}))
+
+      if (response.status === 401) {
+        cerrarSesionAdmin()
+        onCerrarSesion()
+        return
+      }
 
       if (!response.ok) {
         throw new Error(data?.error || 'No se pudo cargar el panel de administración.')
@@ -57,6 +143,13 @@ export default function Admin() {
       setFuente('servidor')
     } catch (err) {
       const locales = ordenarReservas(cargarReservasDesdeStorage())
+
+      if (err.message?.includes('401') || err.message?.includes('autorizado')) {
+        cerrarSesionAdmin()
+        onCerrarSesion()
+        return
+      }
+
       setReservas(locales)
 
       if (locales.length > 0) {
@@ -78,7 +171,7 @@ export default function Admin() {
       window.clearTimeout(timeoutId)
       setLoading(false)
     }
-  }, [])
+  }, [onCerrarSesion])
 
   useEffect(() => {
     cargarReservas()
@@ -91,7 +184,7 @@ export default function Admin() {
       <div className="admin-page__header">
         <div>
           <h1 id="admin-title" className="admin-page__title">
-            Panel de Administración
+            Gestión de reservas
           </h1>
           <p className="admin-page__subtitle">
             {fuente === 'servidor'
@@ -101,14 +194,23 @@ export default function Admin() {
                 : 'Listado de reservas del restaurante.'}
           </p>
         </div>
-        <button
-          type="button"
-          className="btn-premium btn-premium--outline admin-refresh-btn"
-          onClick={cargarReservas}
-          disabled={loading}
-        >
-          {loading ? 'Actualizando…' : 'Actualizar'}
-        </button>
+        <div className="admin-page__actions">
+          <button
+            type="button"
+            className="btn-premium btn-premium--outline admin-refresh-btn"
+            onClick={cargarReservas}
+            disabled={loading}
+          >
+            {loading ? 'Actualizando…' : 'Actualizar'}
+          </button>
+          <button
+            type="button"
+            className="btn-premium btn-premium--outline admin-refresh-btn"
+            onClick={onCerrarSesion}
+          >
+            Cerrar sesión
+          </button>
+        </div>
       </div>
 
       <div className="admin-summary-card">
@@ -146,7 +248,7 @@ export default function Admin() {
               {reservas.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="admin-table__empty">
-                    Aún no hay reservas registradas para hoy.
+                    Aún no hay reservas registradas.
                   </td>
                 </tr>
               ) : (
@@ -168,4 +270,19 @@ export default function Admin() {
       )}
     </section>
   )
+}
+
+export default function Admin() {
+  const [autenticado, setAutenticado] = useState(() => sesionAdminActiva())
+
+  const cerrarSesion = () => {
+    cerrarSesionAdmin()
+    setAutenticado(false)
+  }
+
+  if (!autenticado) {
+    return <FormularioLoginAdmin onAccesoCorrecto={() => setAutenticado(true)} />
+  }
+
+  return <PanelReservasAdmin onCerrarSesion={cerrarSesion} />
 }

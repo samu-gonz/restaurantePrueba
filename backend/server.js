@@ -1,4 +1,5 @@
 import 'dotenv/config'
+import crypto from 'crypto'
 import express from 'express'
 import cors from 'cors'
 import nodemailer from 'nodemailer'
@@ -19,6 +20,11 @@ const CORREO_DUENO = 'samuelgonz2006@gmail.com'
 const RESEND_API_KEY = process.env.RESEND_API_KEY
 const RESEND_FROM_EMAIL =
   process.env.RESEND_FROM_EMAIL ?? 'El Realejo Tascas <onboarding@resend.dev>'
+const ADMIN_USER = process.env.ADMIN_USER ?? 'admin'
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD
+const ADMIN_TOKEN_SECRET =
+  process.env.ADMIN_TOKEN_SECRET ?? ADMIN_PASSWORD ?? 'cambiar-secreto-admin'
+const ADMIN_TOKEN_TTL_MS = 8 * 60 * 60 * 1000
 
 // 14 platos ampliados
 const menuData = [
@@ -199,6 +205,58 @@ app.use(
   }),
 )
 app.use(express.json())
+
+function crearTokenAdmin() {
+  const payload = {
+    rol: 'admin',
+    exp: Date.now() + ADMIN_TOKEN_TTL_MS,
+  }
+  const datos = Buffer.from(JSON.stringify(payload)).toString('base64url')
+  const firma = crypto.createHmac('sha256', ADMIN_TOKEN_SECRET).update(datos).digest('base64url')
+  return `${datos}.${firma}`
+}
+
+function verificarTokenAdmin(token) {
+  if (!token || typeof token !== 'string') return false
+
+  const [datos, firma] = token.split('.')
+  if (!datos || !firma) return false
+
+  const firmaEsperada = crypto
+    .createHmac('sha256', ADMIN_TOKEN_SECRET)
+    .update(datos)
+    .digest('base64url')
+
+  if (firma !== firmaEsperada) return false
+
+  try {
+    const payload = JSON.parse(Buffer.from(datos, 'base64url').toString('utf8'))
+    return payload.rol === 'admin' && typeof payload.exp === 'number' && payload.exp > Date.now()
+  } catch {
+    return false
+  }
+}
+
+function middlewareAdmin(req, res, next) {
+  if (!ADMIN_PASSWORD) {
+    return res.status(503).json({
+      ok: false,
+      error: 'Panel de administración no configurado en el servidor.',
+    })
+  }
+
+  const encabezado = req.headers.authorization ?? ''
+  const token = encabezado.startsWith('Bearer ') ? encabezado.slice(7) : ''
+
+  if (!verificarTokenAdmin(token)) {
+    return res.status(401).json({
+      ok: false,
+      error: 'Acceso no autorizado. Inicia sesión de nuevo.',
+    })
+  }
+
+  next()
+}
 
 const aforoPorTurno = new Map()
 const reservasRegistradas = []
@@ -418,7 +476,37 @@ app.get('/api/disponibilidad', (req, res) => {
   })
 })
 
-app.get('/api/admin/reservas', (_req, res) => {
+app.post('/api/admin/login', (req, res) => {
+  const { usuario, contrasena } = req.body ?? {}
+
+  if (!ADMIN_PASSWORD) {
+    return res.status(503).json({
+      ok: false,
+      error: 'Panel de administración no configurado. Define ADMIN_PASSWORD en el servidor.',
+    })
+  }
+
+  const usuarioNormalizado = normalizarTexto(String(usuario ?? ''))
+  const contrasenaEnviada = String(contrasena ?? '')
+
+  if (
+    usuarioNormalizado !== normalizarTexto(ADMIN_USER) ||
+    contrasenaEnviada !== ADMIN_PASSWORD
+  ) {
+    return res.status(401).json({
+      ok: false,
+      error: 'Usuario o contraseña incorrectos.',
+    })
+  }
+
+  return res.json({
+    ok: true,
+    token: crearTokenAdmin(),
+    expiraEnHoras: ADMIN_TOKEN_TTL_MS / (60 * 60 * 1000),
+  })
+})
+
+app.get('/api/admin/reservas', middlewareAdmin, (_req, res) => {
   const reservasOrdenadas = reservasRegistradas.slice().sort((a, b) => {
     if (a.fecha === b.fecha) return valorOrdenTurno(a.turno) - valorOrdenTurno(b.turno)
     return a.fecha.localeCompare(b.fecha)
@@ -540,6 +628,11 @@ app.listen(PORT, () => {
     console.log('[email] Gmail SMTP activo →', emailUser)
   } else {
     console.warn('[email] Sin proveedor configurado. Añade RESEND_API_KEY o EMAIL_USER/EMAIL_PASS')
+  }
+  if (ADMIN_PASSWORD) {
+    console.log('[admin] Panel protegido activo → usuario:', ADMIN_USER)
+  } else {
+    console.warn('[admin] Sin ADMIN_PASSWORD. El login del panel no funcionará.')
   }
 })
 
