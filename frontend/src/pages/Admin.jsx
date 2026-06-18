@@ -16,15 +16,41 @@ function formatearFecha(fechaISO) {
   return `${d}/${m}/${y}`
 }
 
+function formatearDiaCabecera(fechaISO) {
+  if (!fechaISO) return '—'
+  const [y, m, d] = String(fechaISO).split('-').map(Number)
+  if (!y || !m || !d) return fechaISO
+  const fecha = new Date(y, m - 1, d)
+  return fecha.toLocaleDateString('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+}
+
 function formatearTurno(turno) {
   return turno === 'almuerzo' ? 'Almuerzo' : 'Cena'
 }
 
+function valorOrdenTurno(turno) {
+  return turno === 'almuerzo' ? 0 : 1
+}
+
 function ordenarReservas(lista) {
   return lista.slice().sort((a, b) => {
-    if (a.fecha === b.fecha) return a.turno.localeCompare(b.turno)
+    if (a.fecha === b.fecha) return valorOrdenTurno(a.turno) - valorOrdenTurno(b.turno)
     return a.fecha.localeCompare(b.fecha)
   })
+}
+
+function agruparReservasPorDia(reservas) {
+  const mapa = new Map()
+  for (const reserva of ordenarReservas(reservas)) {
+    if (!mapa.has(reserva.fecha)) mapa.set(reserva.fecha, [])
+    mapa.get(reserva.fecha).push(reserva)
+  }
+  return [...mapa.entries()]
 }
 
 function FormularioLoginAdmin({ onAccesoCorrecto }) {
@@ -100,12 +126,41 @@ function FormularioLoginAdmin({ onAccesoCorrecto }) {
   )
 }
 
+function TablaReservasDia({ reservas }) {
+  return (
+    <table className="admin-table">
+      <thead>
+        <tr>
+          <th>Titular</th>
+          <th>Email</th>
+          <th>Turno</th>
+          <th>Localizador</th>
+        </tr>
+      </thead>
+      <tbody>
+        {reservas.map((reserva) => (
+          <tr key={reserva.localizador ?? reserva.id}>
+            <td>{reserva.nombre}</td>
+            <td>{reserva.email ?? '—'}</td>
+            <td>{formatearTurno(reserva.turno)}</td>
+            <td>
+              <span className="admin-table__locator">{reserva.localizador}</span>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
 function PanelReservasAdmin({ onCerrarSesion }) {
   const [reservas, setReservas] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [aviso, setAviso] = useState('')
   const [fuente, setFuente] = useState('')
+  const [almacenamiento, setAlmacenamiento] = useState('')
+  const [filtroFecha, setFiltroFecha] = useState('')
 
   const cargarReservas = useCallback(async () => {
     setLoading(true)
@@ -115,6 +170,7 @@ function PanelReservasAdmin({ onCerrarSesion }) {
     if (!backendConfigurado()) {
       setReservas(ordenarReservas(cargarReservasDesdeStorage()))
       setFuente('local')
+      setAlmacenamiento('')
       setLoading(false)
       return
     }
@@ -122,8 +178,11 @@ function PanelReservasAdmin({ onCerrarSesion }) {
     const controller = new AbortController()
     const timeoutId = window.setTimeout(() => controller.abort(), 15_000)
 
+    const url = new URL(`${API_BASE_URL}/api/admin/reservas`)
+    if (filtroFecha) url.searchParams.set('fecha', filtroFecha)
+
     try {
-      const response = await fetch(`${API_BASE_URL}/api/admin/reservas`, {
+      const response = await fetch(url.toString(), {
         signal: controller.signal,
         headers: cabecerasAdminAutenticado(),
       })
@@ -140,6 +199,7 @@ function PanelReservasAdmin({ onCerrarSesion }) {
       }
 
       setReservas(ordenarReservas(Array.isArray(data?.reservas) ? data.reservas : []))
+      setAlmacenamiento(data?.almacenamiento ?? '')
       setFuente('servidor')
     } catch (err) {
       const locales = ordenarReservas(cargarReservasDesdeStorage())
@@ -151,6 +211,7 @@ function PanelReservasAdmin({ onCerrarSesion }) {
       }
 
       setReservas(locales)
+      setAlmacenamiento('')
 
       if (locales.length > 0) {
         setFuente('local')
@@ -171,13 +232,24 @@ function PanelReservasAdmin({ onCerrarSesion }) {
       window.clearTimeout(timeoutId)
       setLoading(false)
     }
-  }, [onCerrarSesion])
+  }, [filtroFecha, onCerrarSesion])
 
   useEffect(() => {
     cargarReservas()
   }, [cargarReservas])
 
-  const totalReservas = useMemo(() => reservas.length, [reservas])
+  const reservasPorDia = useMemo(() => agruparReservasPorDia(reservas), [reservas])
+  const totalReservas = reservas.length
+  const totalDias = reservasPorDia.length
+
+  const subtitulo =
+    fuente === 'servidor'
+      ? almacenamiento === 'mysql'
+        ? 'Reservas guardadas en base de datos MySQL.'
+        : 'Reservas guardadas en el servidor (archivo persistente).'
+      : fuente === 'local'
+        ? 'Reservas guardadas en este navegador.'
+        : 'Listado de reservas del restaurante.'
 
   return (
     <section className="admin-page" aria-labelledby="admin-title">
@@ -186,13 +258,7 @@ function PanelReservasAdmin({ onCerrarSesion }) {
           <h1 id="admin-title" className="admin-page__title">
             Gestión de reservas
           </h1>
-          <p className="admin-page__subtitle">
-            {fuente === 'servidor'
-              ? 'Reservas en tiempo real desde el servidor.'
-              : fuente === 'local'
-                ? 'Reservas guardadas en este navegador.'
-                : 'Listado de reservas del restaurante.'}
-          </p>
+          <p className="admin-page__subtitle">{subtitulo}</p>
         </div>
         <div className="admin-page__actions">
           <button
@@ -213,9 +279,38 @@ function PanelReservasAdmin({ onCerrarSesion }) {
         </div>
       </div>
 
-      <div className="admin-summary-card">
-        <p className="admin-summary-card__label">Total de reservas</p>
-        <p className="admin-summary-card__value">{totalReservas}</p>
+      <div className="admin-summary-grid">
+        <div className="admin-summary-card">
+          <p className="admin-summary-card__label">Total de reservas</p>
+          <p className="admin-summary-card__value">{totalReservas}</p>
+        </div>
+        <div className="admin-summary-card">
+          <p className="admin-summary-card__label">Días con reservas</p>
+          <p className="admin-summary-card__value">{totalDias}</p>
+        </div>
+      </div>
+
+      <div className="admin-filters">
+        <div className="reservas-field admin-filters__field">
+          <label htmlFor="admin-filtro-fecha">Filtrar por día</label>
+          <input
+            id="admin-filtro-fecha"
+            type="date"
+            value={filtroFecha}
+            onChange={(evento) => setFiltroFecha(evento.target.value)}
+            disabled={loading}
+          />
+        </div>
+        {filtroFecha && (
+          <button
+            type="button"
+            className="btn-premium btn-premium--outline admin-filters__clear"
+            onClick={() => setFiltroFecha('')}
+            disabled={loading}
+          >
+            Ver todos los días
+          </button>
+        )}
       </div>
 
       {aviso && (
@@ -232,40 +327,28 @@ function PanelReservasAdmin({ onCerrarSesion }) {
         <div className="reservas-alert" role="alert">
           {error}
         </div>
+      ) : reservasPorDia.length === 0 ? (
+        <div className="admin-loading-card">
+          <p className="text-muted">Aún no hay reservas registradas.</p>
+        </div>
       ) : (
-        <div className="admin-table-card">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Titular</th>
-                <th>Email</th>
-                <th>Fecha</th>
-                <th>Turno</th>
-                <th>Localizador</th>
-              </tr>
-            </thead>
-            <tbody>
-              {reservas.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="admin-table__empty">
-                    Aún no hay reservas registradas.
-                  </td>
-                </tr>
-              ) : (
-                reservas.map((reserva) => (
-                  <tr key={reserva.localizador ?? reserva.id}>
-                    <td>{reserva.nombre}</td>
-                    <td>{reserva.email ?? '—'}</td>
-                    <td>{formatearFecha(reserva.fecha)}</td>
-                    <td>{formatearTurno(reserva.turno)}</td>
-                    <td>
-                      <span className="admin-table__locator">{reserva.localizador}</span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        <div className="admin-day-list">
+          {reservasPorDia.map(([fecha, reservasDelDia]) => (
+            <article key={fecha} className="admin-day-section">
+              <header className="admin-day-section__header">
+                <div>
+                  <h2 className="admin-day-section__title">{formatearDiaCabecera(fecha)}</h2>
+                  <p className="admin-day-section__meta">{formatearFecha(fecha)}</p>
+                </div>
+                <span className="admin-day-section__count">
+                  {reservasDelDia.length} reserva{reservasDelDia.length === 1 ? '' : 's'}
+                </span>
+              </header>
+              <div className="admin-table-card admin-day-section__table">
+                <TablaReservasDia reservas={reservasDelDia} />
+              </div>
+            </article>
+          ))}
         </div>
       )}
     </section>

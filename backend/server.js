@@ -4,6 +4,15 @@ import express from 'express'
 import cors from 'cors'
 import nodemailer from 'nodemailer'
 
+import {
+  AforoCompletoError,
+  contarMesasOcupadas,
+  crearReserva,
+  initReservasStore,
+  listarReservasConAgrupacion,
+  modoReservas,
+} from './reservasStore.js'
+
 const PORT = Number(process.env.PORT) || 5000
 const MESAS_MAX = 30
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i
@@ -258,8 +267,6 @@ function middlewareAdmin(req, res, next) {
   next()
 }
 
-const aforoPorTurno = new Map()
-const reservasRegistradas = []
 
 const emailUser = process.env.EMAIL_USER
 const emailPass = process.env.EMAIL_PASS?.replace(/\s/g, '')
@@ -395,10 +402,6 @@ function generarLocalizador() {
   return `#RE-${year}${sufijo}`
 }
 
-function valorOrdenTurno(turno) {
-  return turno === 'almuerzo' ? 0 : 1
-}
-
 function valorOrdenCategoria(categoria) {
   const orden = { entrantes: 0, carnes: 1, pescados: 2, postres: 3 }
   return orden[categoria] ?? 99
@@ -447,7 +450,7 @@ app.get('/api/menu', (_req, res) => {
   res.json(menuOrdenado)
 })
 
-app.get('/api/disponibilidad', (req, res) => {
+app.get('/api/disponibilidad', async (req, res) => {
   const fecha = String(req.query.fecha ?? '')
   const turno = normalizarTurno(req.query.turno)
 
@@ -466,14 +469,22 @@ app.get('/api/disponibilidad', (req, res) => {
     })
   }
 
-  const ocupadas = aforoPorTurno.get(claveAforo(fecha, turno)) ?? 0
-  const libres = Math.max(0, MESAS_MAX - ocupadas)
+  try {
+    const ocupadas = await contarMesasOcupadas(fecha, turno)
+    const libres = Math.max(0, MESAS_MAX - ocupadas)
 
-  return res.json({
-    mesasOcupadas: ocupadas,
-    mesasLibres: libres,
-    estado: calcularEstadoAforo(libres),
-  })
+    return res.json({
+      mesasOcupadas: ocupadas,
+      mesasLibres: libres,
+      estado: calcularEstadoAforo(libres),
+    })
+  } catch (error) {
+    console.error('Error al consultar disponibilidad:', error)
+    return res.status(500).json({
+      ok: false,
+      error: 'No se pudo consultar la disponibilidad.',
+    })
+  }
 })
 
 app.post('/api/admin/login', (req, res) => {
@@ -506,16 +517,19 @@ app.post('/api/admin/login', (req, res) => {
   })
 })
 
-app.get('/api/admin/reservas', middlewareAdmin, (_req, res) => {
-  const reservasOrdenadas = reservasRegistradas.slice().sort((a, b) => {
-    if (a.fecha === b.fecha) return valorOrdenTurno(a.turno) - valorOrdenTurno(b.turno)
-    return a.fecha.localeCompare(b.fecha)
-  })
+app.get('/api/admin/reservas', middlewareAdmin, async (req, res) => {
+  const fechaFiltro = normalizarTexto(req.query.fecha) || undefined
 
-  return res.json({
-    total: reservasOrdenadas.length,
-    reservas: reservasOrdenadas,
-  })
+  try {
+    const resultado = await listarReservasConAgrupacion({ fecha: fechaFiltro })
+    return res.json(resultado)
+  } catch (error) {
+    console.error('Error al listar reservas:', error)
+    return res.status(500).json({
+      ok: false,
+      error: 'No se pudieron cargar las reservas.',
+    })
+  }
 })
 
 app.post('/api/reservas', async (req, res) => {
@@ -569,28 +583,32 @@ app.post('/api/reservas', async (req, res) => {
   }
 
   const clave = claveAforo(fechaNormalizada, turnoNormalizado)
-  const ocupadasActuales = aforoPorTurno.get(clave) ?? 0
+  const localizador = generarLocalizador()
 
-  if (ocupadasActuales >= MESAS_MAX) {
-    return res.status(400).json({
+  try {
+    await crearReserva({
+      nombre: nombreNormalizado,
+      email: emailNormalizado,
+      fecha: fechaNormalizada,
+      turno: turnoNormalizado,
+      localizador,
+      mesasMax: MESAS_MAX,
+    })
+  } catch (error) {
+    if (error instanceof AforoCompletoError) {
+      return res.status(400).json({
+        ok: false,
+        error: '⚫ Aforo completo de 30 mesas. Por favor, selecciona otra fecha o turno.',
+      })
+    }
+    console.error('Error al guardar reserva:', error)
+    return res.status(500).json({
       ok: false,
-      error: '⚫ Aforo completo de 30 mesas. Por favor, selecciona otra fecha o turno.',
+      error: 'No se pudo registrar la reserva. Inténtalo de nuevo.',
     })
   }
 
-  const nuevasOcupadas = ocupadasActuales + 1
-  aforoPorTurno.set(clave, nuevasOcupadas)
-
-  const localizador = generarLocalizador()
-  reservasRegistradas.push({
-    id: reservasRegistradas.length + 1,
-    nombre: nombreNormalizado,
-    email: emailNormalizado,
-    fecha: fechaNormalizada,
-    turno: turnoNormalizado,
-    localizador,
-    createdAt: new Date().toISOString(),
-  })
+  const nuevasOcupadas = await contarMesasOcupadas(fechaNormalizada, turnoNormalizado)
 
   res.status(201).json({
     ok: true,
@@ -619,9 +637,16 @@ app.post('/api/reservas', async (req, res) => {
   })
 })
 
+try {
+  await initReservasStore()
+} catch (error) {
+  console.error('[reservas] No se pudo inicializar el almacén:', error)
+}
+
 app.listen(PORT, () => {
   console.log(`Backend Guachinche El Realejo listo en http://localhost:${PORT}`)
   console.log('CORS activo para:', CORS_ORIGINS.join(', ') || '(ningún origen configurado)')
+  console.log('[reservas] Almacenamiento:', modoReservas() === 'mysql' ? 'MySQL' : 'archivo JSON')
   if (RESEND_API_KEY) {
     console.log('[email] Resend activo →', RESEND_FROM_EMAIL)
   } else if (transporter) {
