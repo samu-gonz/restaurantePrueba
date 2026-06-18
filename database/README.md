@@ -1,44 +1,61 @@
 # Base de datos — Guachinche El Realejo
 
-Las reservas se guardan en **MySQL** cuando defines `DB_HOST`, `DB_USER` y `DB_NAME` en `backend/.env`.  
-Si MySQL no está configurado o no responde, el backend usa un archivo JSON en `backend/data/reservas.json`.
+Las reservas se guardan **solo en MySQL**. El backend no arranca sin conexión a la base de datos.
 
-## Crear la base de datos (MySQL local)
+## Desarrollo local (Docker)
 
-1. Instala MySQL (o XAMPP/WAMP con MySQL).
-2. Ejecuta el esquema:
+1. Arranca MySQL:
 
 ```bash
-mysql -u root -p < database/schema.sql
+docker compose up -d
 ```
 
-3. En `backend/.env`:
+2. En `backend/.env` (ya configurado por defecto con Docker):
 
 ```env
 DB_HOST=localhost
 DB_USER=root
-DB_PASSWORD=tu_contraseña
+DB_PASSWORD=realejo_root
 DB_NAME=el_realejo
 ```
 
-4. Reinicia el backend (`npm run dev`).
+3. Inicia el backend:
 
-## Producción (Render u otro hosting)
+```bash
+cd backend
+npm run dev
+```
 
-Añade un servicio MySQL (Railway, PlanetScale alternativas, Aiven, etc.) y configura las mismas variables en el panel de Render.
+La tabla `reservas` se crea automáticamente al conectar. También puedes aplicar el esquema manualmente:
 
-Sin MySQL en producción, las reservas se guardan en `backend/data/reservas.json`. En Render el disco es **efímero** (se pierde al reiniciar), por lo que se recomienda MySQL para producción.
+```bash
+docker exec -i el-realejo-mysql mysql -uroot -prealejo_root < database/schema.sql
+```
+
+## Producción (Render)
+
+Necesitas un MySQL en la nube (Railway, Aiven, etc.) y estas variables en Render:
+
+| Variable      | Ejemplo        |
+|---------------|----------------|
+| `DB_HOST`     | tu-host.mysql… |
+| `DB_USER`     | root           |
+| `DB_PASSWORD` | ***            |
+| `DB_NAME`     | el_realejo     |
+| `DB_PORT`     | 3306           |
+
+Ejecuta `database/schema.sql` una vez en tu instancia remota.
 
 ## Tabla `reservas`
 
-| Campo        | Tipo        | Descripción                    |
-|-------------|-------------|--------------------------------|
-| id          | INT         | Identificador interno          |
-| nombre      | VARCHAR     | Titular de la reserva          |
-| email       | VARCHAR     | Correo del cliente             |
-| fecha       | DATE        | Día de la reserva (YYYY-MM-DD) |
-| turno       | ENUM        | `almuerzo` o `cena`            |
-| localizador | VARCHAR     | Código único (#RE-…)           |
-| created_at  | TIMESTAMP   | Fecha de registro              |
+| Campo        | Tipo      | Descripción                    |
+|-------------|-----------|--------------------------------|
+| id          | INT       | Identificador interno          |
+| nombre      | VARCHAR   | Titular de la reserva          |
+| email       | VARCHAR   | Correo del cliente             |
+| fecha       | DATE      | Día de la reserva (YYYY-MM-DD) |
+| turno       | ENUM      | `almuerzo` o `cena`            |
+| localizador | VARCHAR   | Código único (#RE-…)           |
+| created_at  | TIMESTAMP | Fecha de registro              |
 
 El aforo (30 mesas por turno) se calcula contando reservas por `fecha` + `turno`.

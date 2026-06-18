@@ -159,7 +159,6 @@ function PanelReservasAdmin({ onCerrarSesion }) {
   const [error, setError] = useState('')
   const [aviso, setAviso] = useState('')
   const [fuente, setFuente] = useState('')
-  const [almacenamiento, setAlmacenamiento] = useState('')
   const [filtroFecha, setFiltroFecha] = useState('')
 
   const cargarReservas = useCallback(async () => {
@@ -170,7 +169,6 @@ function PanelReservasAdmin({ onCerrarSesion }) {
     if (!backendConfigurado()) {
       setReservas(ordenarReservas(cargarReservasDesdeStorage()))
       setFuente('local')
-      setAlmacenamiento('')
       setLoading(false)
       return
     }
@@ -199,7 +197,6 @@ function PanelReservasAdmin({ onCerrarSesion }) {
       }
 
       setReservas(ordenarReservas(Array.isArray(data?.reservas) ? data.reservas : []))
-      setAlmacenamiento(data?.almacenamiento ?? '')
       setFuente('servidor')
     } catch (err) {
       const locales = ordenarReservas(cargarReservasDesdeStorage())
@@ -211,7 +208,6 @@ function PanelReservasAdmin({ onCerrarSesion }) {
       }
 
       setReservas(locales)
-      setAlmacenamiento('')
 
       if (locales.length > 0) {
         setFuente('local')
@@ -244,9 +240,7 @@ function PanelReservasAdmin({ onCerrarSesion }) {
 
   const subtitulo =
     fuente === 'servidor'
-      ? almacenamiento === 'mysql'
-        ? 'Reservas guardadas en base de datos MySQL.'
-        : 'Reservas guardadas en el servidor (archivo persistente).'
+      ? 'Reservas guardadas en base de datos MySQL.'
       : fuente === 'local'
         ? 'Reservas guardadas en este navegador.'
         : 'Listado de reservas del restaurante.'

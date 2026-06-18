@@ -10,7 +10,6 @@ import {
   crearReserva,
   initReservasStore,
   listarReservasConAgrupacion,
-  modoReservas,
 } from './reservasStore.js'
 
 const PORT = Number(process.env.PORT) || 5000
@@ -640,13 +639,14 @@ app.post('/api/reservas', async (req, res) => {
 try {
   await initReservasStore()
 } catch (error) {
-  console.error('[reservas] No se pudo inicializar el almacén:', error)
+  console.error('[reservas] Error fatal:', error.message)
+  process.exit(1)
 }
 
 app.listen(PORT, () => {
   console.log(`Backend Guachinche El Realejo listo en http://localhost:${PORT}`)
   console.log('CORS activo para:', CORS_ORIGINS.join(', ') || '(ningún origen configurado)')
-  console.log('[reservas] Almacenamiento:', modoReservas() === 'mysql' ? 'MySQL' : 'archivo JSON')
+  console.log('[reservas] Almacenamiento: MySQL')
   if (RESEND_API_KEY) {
     console.log('[email] Resend activo →', RESEND_FROM_EMAIL)
   } else if (transporter) {

@@ -7,6 +7,8 @@
     "dev": "concurrently -n frontend,backend -c cyan,magenta \"npm --prefix frontend run dev\" \"npm --prefix backend run dev\"",
     "dev:frontend": "npm --prefix frontend run dev",
     "dev:backend": "npm --prefix backend run dev",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
     "build": "npm --prefix frontend run build",
     "preview": "npm --prefix frontend run preview",
     "lint": "npm --prefix frontend run lint"
