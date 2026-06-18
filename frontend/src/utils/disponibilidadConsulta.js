@@ -87,8 +87,50 @@ export function formatearHora(horas, minutos) {
   return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}`
 }
 
+function convertirHora12a24(horas, minutos, meridiano) {
+  if (meridiano === 'pm' && horas < 12) {
+    return { horas: horas + 12, minutos }
+  }
+  if (meridiano === 'am' && horas === 12) {
+    return { horas: 0, minutos }
+  }
+  return { horas, minutos }
+}
+
+function parsearHora12DesdeTexto(textoNormalizado) {
+  const formatoAmPm = textoNormalizado.match(/(\d{1,2})(?::(\d{2}))?(?:\s*)?(am|pm)\b/)
+  if (formatoAmPm) {
+    const horas = Number(formatoAmPm[1])
+    const minutos = formatoAmPm[2] ? Number(formatoAmPm[2]) : 0
+    return convertirHora12a24(horas, minutos, formatoAmPm[3])
+  }
+
+  const formatoEspanol = textoNormalizado.match(
+    /\b(\d{1,2})(?::(\d{2}))?\s*(?:de la (tarde|noche|manana))\b/,
+  )
+  if (formatoEspanol) {
+    let horas = Number(formatoEspanol[1])
+    const minutos = formatoEspanol[2] ? Number(formatoEspanol[2]) : 0
+    const momento = formatoEspanol[3]
+
+    if ((momento === 'tarde' || momento === 'noche') && horas < 12) {
+      horas += 12
+    }
+    if (momento === 'manana' && horas === 12) {
+      horas = 0
+    }
+
+    return { horas, minutos }
+  }
+
+  return null
+}
+
 export function parsearHoraDesdeTexto(texto) {
   const textoNormalizado = normalizarTexto(texto)
+
+  const hora12 = parsearHora12DesdeTexto(textoNormalizado)
+  if (hora12) return hora12
 
   const conMinutos = textoNormalizado.match(/\b(\d{1,2})[:.](\d{2})\b/)
   if (conMinutos) {
@@ -103,11 +145,23 @@ export function parsearHoraDesdeTexto(texto) {
     return { horas: Number(soloHora[1]), minutos: 0 }
   }
 
-  const aLas = textoNormalizado.match(/a las (\d{1,2})(?:\s*y\s*media)?/)
+  const aLas = textoNormalizado.match(
+    /a las (\d{1,2})(?::(\d{2}))?(?:\s*y\s*media)?(?:\s*de la (tarde|noche|manana))?/,
+  )
   if (aLas) {
-    const horas = Number(aLas[1])
-    const minutos =
-      textoNormalizado.includes('y media') || textoNormalizado.includes(':30') ? 30 : 0
+    let horas = Number(aLas[1])
+    const minutos = aLas[2]
+      ? Number(aLas[2])
+      : textoNormalizado.includes('y media') || textoNormalizado.includes(':30')
+        ? 30
+        : 0
+
+    if (aLas[3] === 'tarde' || aLas[3] === 'noche') {
+      if (horas < 12) horas += 12
+    } else if (aLas[3] === 'manana' && horas === 12) {
+      horas = 0
+    }
+
     return { horas, minutos }
   }
 
