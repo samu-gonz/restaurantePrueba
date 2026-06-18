@@ -2,6 +2,26 @@
 
 Las reservas se guardan **solo en MySQL**. El backend no arranca sin conexión a la base de datos.
 
+## Desarrollo local con XAMPP
+
+1. Inicia **MySQL** en el panel de control de XAMPP.
+2. Crea la base de datos (solo la primera vez):
+
+```bash
+C:\xampp\mysql\bin\mysql.exe -u root < database/schema.sql
+```
+
+3. En `backend/.env`:
+
+```env
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=
+DB_NAME=el_realejo
+```
+
+4. Inicia el backend: `npm run dev`
+
 ## Desarrollo local (Docker)
 
 1. Arranca MySQL:

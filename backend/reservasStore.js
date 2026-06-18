@@ -87,7 +87,7 @@ export async function initReservasStore() {
   if (!dbConfigurada()) {
     throw new ReservasStoreError(
       'MySQL no configurado. Define DB_HOST, DB_USER, DB_NAME y DB_PASSWORD en backend/.env. ' +
-        'En local: docker compose up -d',
+        'En local: activa MySQL en XAMPP o ejecuta docker compose up -d',
     )
   }
 
@@ -111,7 +111,7 @@ export async function initReservasStore() {
     pool = null
     throw new ReservasStoreError(
       `No se pudo conectar a MySQL (${error.message}). ` +
-        'Comprueba que el servidor esté en marcha (docker compose up -d).',
+        'Comprueba que MySQL esté activo en XAMPP o ejecuta docker compose up -d.',
     )
   }
 }
