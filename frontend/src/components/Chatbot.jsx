@@ -2,11 +2,20 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { CONFIG_RESTAURANTE, formatearPrecio, menuData } from '../data/db'
 import { MAPS_URL, UBICACION_RESTAURANTE } from '../config/ubicacion'
+import {
+  describirEstadoDisponibilidad,
+  esDiaCerrado,
+  etiquetaTurno,
+  formatearFechaLegible,
+  formatearHora,
+  interpretarConsultaDisponibilidad,
+  obtenerDisponibilidadRemota,
+} from '../utils/disponibilidadConsulta'
 import './Chatbot.css'
 
 const COLOR_VINO = '#9B111E'
 const MENSAJE_BIENVENIDA =
-  '¡Hola! Soy el asistente de Guachinche El Realejo. Pregúntame por la carta, reservas u horarios — te mostraré la información al instante.'
+  '¡Hola! Soy el asistente de Guachinche El Realejo. Pregúntame por la carta, reservas, horarios o disponibilidad (por ejemplo: «¿hay mesa hoy a las 20:00?»).'
 const RETRASO_RESPUESTA_MS = 600
 
 const PLATOS_ESTRELLA = [...menuData].sort((a, b) => b.precio - a.precio).slice(0, 3)
@@ -88,6 +97,42 @@ function BotonAbrirMaps() {
   )
 }
 
+function TarjetaDisponibilidad({ consulta, resultado, onReservar }) {
+  const resumen = describirEstadoDisponibilidad(resultado.estado, resultado.mesasLibres)
+  const fechaTexto = formatearFechaLegible(consulta.fecha)
+  const turnoTexto = etiquetaTurno(consulta.turno)
+  const horaTexto = consulta.hora ? ` a las ${formatearHora(consulta.hora.horas, consulta.hora.minutos)}` : ''
+
+  return (
+    <div className={`chatbot-availability chatbot-availability--${resumen.tono}`}>
+      <p className="chatbot-availability__titulo">{resumen.titulo}</p>
+      <p className="chatbot-availability__detalle">{resumen.detalle}</p>
+      <dl className="chatbot-availability__meta">
+        <div>
+          <dt>Fecha</dt>
+          <dd>{fechaTexto}</dd>
+        </div>
+        <div>
+          <dt>Turno</dt>
+          <dd>
+            {turnoTexto}
+            {horaTexto}
+          </dd>
+        </div>
+        <div>
+          <dt>Libres</dt>
+          <dd>{resultado.mesasLibres}</dd>
+        </div>
+      </dl>
+      {resultado.estado !== 'completo' && (
+        <button type="button" className="chatbot-rich-btn" onClick={onReservar}>
+          📅 Reservar ahora
+        </button>
+      )}
+    </div>
+  )
+}
+
 function TablaHorarios() {
   const abiertoGlobal = comprobarApertura()
   const almuerzoActivo = turnoActivo('almuerzo')
@@ -159,6 +204,80 @@ function TablaHorarios() {
 
 /* ── Motor de respuestas enriquecidas ──────────────────────────────────────── */
 
+async function resolverConsultaDisponibilidad(textoUsuario, { irReservas }) {
+  const consulta = interpretarConsultaDisponibilidad(textoUsuario)
+  if (!consulta) return null
+
+  if (esDiaCerrado(consulta.fecha)) {
+    return {
+      text: `El ${formatearFechaLegible(consulta.fecha)} cerramos por descanso semanal. ${'Cerramos lunes y martes.'}`,
+      component: <BotonIrReservas onClick={irReservas} />,
+    }
+  }
+
+  const turnosAConsultar = consulta.turno ? [consulta.turno] : ['almuerzo', 'cena']
+
+  try {
+    const resultados = await Promise.all(
+      turnosAConsultar.map(async (turno) => ({
+        turno,
+        datos: await obtenerDisponibilidadRemota(consulta.fecha, turno),
+      })),
+    )
+
+    if (resultados.length === 1) {
+      const { turno, datos } = resultados[0]
+      const consultaConTurno = { ...consulta, turno }
+      const fechaTexto = formatearFechaLegible(consulta.fecha)
+      const horaTexto = consulta.hora
+        ? ` a las ${formatearHora(consulta.hora.horas, consulta.hora.minutos)}`
+        : ''
+      const aviso = consulta.avisoHorario ? ` ${consulta.avisoHorario}` : ''
+      const resumen = describirEstadoDisponibilidad(datos.estado, datos.mesasLibres)
+
+      return {
+        text: `Para el turno de ${etiquetaTurno(turno)} ${fechaTexto}${horaTexto}: ${resumen.detalle.toLowerCase()}${aviso}`,
+        component: (
+          <TarjetaDisponibilidad
+            consulta={consultaConTurno}
+            resultado={datos}
+            onReservar={irReservas}
+          />
+        ),
+      }
+    }
+
+    const lineas = resultados.map(({ turno, datos }) => {
+      const resumen = describirEstadoDisponibilidad(datos.estado, datos.mesasLibres)
+      return `• ${etiquetaTurno(turno)}: ${resumen.detalle}`
+    })
+
+    const turnoRecomendado =
+      resultados.find(({ datos }) => datos.estado !== 'completo')?.turno ?? null
+
+    return {
+      text: `Disponibilidad para ${formatearFechaLegible(consulta.fecha)}:\n${lineas.join('\n')}`,
+      component: turnoRecomendado ? (
+        <TarjetaDisponibilidad
+          consulta={{ ...consulta, turno: turnoRecomendado }}
+          resultado={resultados.find((item) => item.turno === turnoRecomendado).datos}
+          onReservar={irReservas}
+        />
+      ) : (
+        <BotonIrReservas onClick={irReservas} />
+      ),
+    }
+  } catch (error) {
+    return {
+      text:
+        error.message === 'Failed to fetch'
+          ? 'No pude consultar el aforo en este momento. Puedes comprobarlo directamente en la página de reservas.'
+          : error.message || 'No pude consultar la disponibilidad ahora mismo.',
+      component: <BotonIrReservas onClick={irReservas} />,
+    }
+  }
+}
+
 function resolverRespuesta(textoUsuario, { irReservas }) {
   const texto = normalizarTexto(textoUsuario)
   const incluye = (...palabras) => palabras.some((p) => texto.includes(p))
@@ -170,7 +289,7 @@ function resolverRespuesta(textoUsuario, { irReservas }) {
     }
   }
 
-  if (incluye('horario', 'abierto', 'cierra', 'abre', 'hora')) {
+  if (incluye('horario', 'abierto', 'cierra', 'abre') && !incluye('disponibilidad', 'disponible', 'mesa')) {
     return {
       text: 'Estos son nuestros turnos de cocina y servicio en sala:',
       component: <TablaHorarios />,
@@ -207,7 +326,7 @@ function resolverRespuesta(textoUsuario, { irReservas }) {
   }
 
   return {
-    text: 'Puedo ayudarte con la carta, reservas u horarios. Prueba preguntarme por «carta», «reservar mesa» o «horario».',
+    text: 'Puedo ayudarte con la carta, reservas, horarios o disponibilidad. Prueba: «¿hay mesa hoy a las 20:00?»',
     component: null,
   }
 }
@@ -324,8 +443,11 @@ export default function Chatbot({ setPaginaActual, abierto, setAbierto }) {
       setEntrada('')
       setEscribiendo(true)
 
-      window.setTimeout(() => {
-        const { text, component } = resolverRespuesta(texto, { irReservas })
+      window.setTimeout(async () => {
+        const disponibilidad = await resolverConsultaDisponibilidad(texto, { irReservas })
+        const { text, component } =
+          disponibilidad ?? resolverRespuesta(texto, { irReservas })
+
         setMensajes((prev) => [
           ...prev,
           { id: crearId(), sender: 'bot', text, component },

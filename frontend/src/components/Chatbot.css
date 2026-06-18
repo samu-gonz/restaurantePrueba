@@ -308,6 +308,61 @@
   box-shadow: 0 6px 16px rgba(155, 17, 30, 0.35);
 }
 
+.chatbot-availability {
+  margin-top: 0.35rem;
+  padding: 0.75rem;
+  border: 1px solid #2f2f2f;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.chatbot-availability--disponible {
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+.chatbot-availability--ultimas {
+  border-color: rgba(234, 179, 8, 0.45);
+}
+
+.chatbot-availability--completo {
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.chatbot-availability__titulo {
+  margin: 0 0 0.35rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #f5f5f5;
+}
+
+.chatbot-availability__detalle {
+  margin: 0 0 0.65rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #d4d4d4;
+}
+
+.chatbot-availability__meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+}
+
+.chatbot-availability__meta dt {
+  margin: 0;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #737373;
+}
+
+.chatbot-availability__meta dd {
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
+  color: #f5f5f5;
+}
+
 /* Tabla horarios */
 .chatbot-schedule {
   margin-top: 0.15rem;
