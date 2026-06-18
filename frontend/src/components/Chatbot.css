@@ -554,6 +554,55 @@
   cursor: not-allowed;
 }
 
+.chatbot-booking-confirm {
+  margin-top: 0.75rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(155, 17, 30, 0.45);
+  border-radius: 12px;
+  background: rgba(155, 17, 30, 0.1);
+}
+
+.chatbot-booking-confirm__badge {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f5a3a3;
+}
+
+.chatbot-booking-confirm__locator {
+  margin: 0.35rem 0 0.75rem;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #9b111e;
+  font-family: ui-monospace, 'Cascadia Code', monospace;
+}
+
+.chatbot-booking-confirm__meta {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.chatbot-booking-confirm__meta div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.86rem;
+}
+
+.chatbot-booking-confirm__meta dt {
+  margin: 0;
+  color: #a3a3a3;
+}
+
+.chatbot-booking-confirm__meta dd {
+  margin: 0;
+  color: #f5f5f5;
+  text-align: right;
+  text-transform: capitalize;
+}
+
 /* iPad y móvil */
 @media (max-width: 64rem) {
   .chatbot-root {

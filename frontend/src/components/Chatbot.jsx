@@ -11,12 +11,17 @@ import {
   interpretarConsultaDisponibilidad,
   obtenerDisponibilidadRemota,
 } from '../utils/disponibilidadConsulta'
+import {
+  ejecutarReservaDesdeChat,
+  esSolicitudCrearReserva,
+  interpretarSolicitudReserva,
+} from '../utils/reservaTareaChatbot'
 import { guardarPrefillReserva } from '../utils/reservasStorage'
 import './Chatbot.css'
 
 const COLOR_VINO = '#9B111E'
 const MENSAJE_BIENVENIDA =
-  '¡Hola! Soy el asistente de Guachinche El Realejo. Pregúntame por la carta, reservas, horarios o disponibilidad (por ejemplo: «¿hay mesa hoy a las 20:00?»).'
+  '¡Hola! Soy el asistente de Guachinche El Realejo. Pregúntame por la carta, horarios o disponibilidad. También puedo reservar mesa por ti (ej.: «Reserva a nombre de Samu, correo samuel@mail.com, para mañana a las 20:00»).'
 const RETRASO_RESPUESTA_MS = 600
 
 const PLATOS_ESTRELLA = [...menuData].sort((a, b) => b.precio - a.precio).slice(0, 3)
@@ -95,6 +100,29 @@ function BotonAbrirMaps() {
     >
       📍 Abrir en Google Maps
     </a>
+  )
+}
+
+function TarjetaConfirmacionReserva({ localizador, nombre, fecha, turno }) {
+  return (
+    <div className="chatbot-booking-confirm">
+      <p className="chatbot-booking-confirm__badge">Reserva confirmada</p>
+      <p className="chatbot-booking-confirm__locator">{localizador}</p>
+      <dl className="chatbot-booking-confirm__meta">
+        <div>
+          <dt>Titular</dt>
+          <dd>{nombre}</dd>
+        </div>
+        <div>
+          <dt>Fecha</dt>
+          <dd>{formatearFechaLegible(fecha)}</dd>
+        </div>
+        <div>
+          <dt>Turno</dt>
+          <dd>{turno}</dd>
+        </div>
+      </dl>
+    </div>
   )
 }
 
@@ -205,6 +233,73 @@ function TablaHorarios() {
 
 /* ── Motor de respuestas enriquecidas ──────────────────────────────────────── */
 
+async function resolverSolicitudReserva(textoUsuario, { irReservas }) {
+  const solicitud = interpretarSolicitudReserva(textoUsuario)
+  if (!solicitud) return null
+
+  if (solicitud.error === 'cerrado') {
+    return {
+      text: `El ${formatearFechaLegible(solicitud.fecha)} cerramos por descanso semanal (lunes y martes).`,
+      component: <BotonIrReservas onClick={irReservas} />,
+    }
+  }
+
+  if (!solicitud.completo) {
+    const faltantes = solicitud.faltan.join(', ')
+    return {
+      text: `Para completar la reserva necesito: ${faltantes}. Ejemplo: «Reserva a nombre de Ana, correo ana@mail.com, para mañana a las 20:00».`,
+      component: <BotonIrReservas onClick={irReservas} />,
+    }
+  }
+
+  try {
+    const disponibilidad = await obtenerDisponibilidadRemota(solicitud.fecha, solicitud.turno)
+
+    if (disponibilidad.estado === 'completo') {
+      return {
+        text: `Lo siento, el turno de ${etiquetaTurno(solicitud.turno)} ${formatearFechaLegible(solicitud.fecha)} está completo.`,
+        component: (
+          <BotonIrReservas
+            onClick={irReservas}
+            consulta={{ fecha: solicitud.fecha, turno: solicitud.turno }}
+          />
+        ),
+      }
+    }
+
+    const resultado = await ejecutarReservaDesdeChat(solicitud)
+    const turnoTexto = solicitud.turno === 'almuerzo' ? 'Almuerzo' : 'Cena'
+    const horaTexto = solicitud.hora
+      ? ` a las ${formatearHora(solicitud.hora.horas, solicitud.hora.minutos)}`
+      : ''
+
+    return {
+      text: `¡Listo! Reserva confirmada a nombre de ${solicitud.nombre} para ${formatearFechaLegible(solicitud.fecha)} (${turnoTexto}${horaTexto}). Te hemos enviado el localizador a ${solicitud.email}.`,
+      component: (
+        <TarjetaConfirmacionReserva
+          localizador={resultado.localizador}
+          nombre={solicitud.nombre}
+          fecha={solicitud.fecha}
+          turno={turnoTexto}
+        />
+      ),
+    }
+  } catch (error) {
+    return {
+      text:
+        error.name === 'AbortError'
+          ? 'La reserva tardó demasiado. Inténtalo de nuevo o usa la página de reservas.'
+          : error.message || 'No pude registrar la reserva ahora mismo.',
+      component: (
+        <BotonIrReservas
+          onClick={irReservas}
+          consulta={{ fecha: solicitud.fecha, turno: solicitud.turno }}
+        />
+      ),
+    }
+  }
+}
+
 async function resolverConsultaDisponibilidad(textoUsuario, { irReservas }) {
   const consulta = interpretarConsultaDisponibilidad(textoUsuario)
   if (!consulta) return null
@@ -297,7 +392,7 @@ function resolverRespuesta(textoUsuario, { irReservas }) {
     }
   }
 
-  if (incluye('reserva', 'reservar', 'mesa', 'apartar', 'turno', 'booking')) {
+  if (incluye('reserva', 'reservar', 'mesa', 'apartar', 'turno', 'booking') && !esSolicitudCrearReserva(textoUsuario)) {
     return {
       text: `Perfecto. Disponemos de ${CONFIG_RESTAURANTE.TOTAL_MESAS_MAX} mesas por turno. Pulsa el botón para gestionar tu reserva:`,
       component: <BotonIrReservas onClick={irReservas} />,
@@ -327,7 +422,7 @@ function resolverRespuesta(textoUsuario, { irReservas }) {
   }
 
   return {
-    text: 'Puedo ayudarte con la carta, reservas, horarios o disponibilidad. Prueba: «¿hay mesa hoy a las 20:00?»',
+    text: 'Puedo ayudarte con la carta, horarios, disponibilidad o reservar mesa. Prueba: «¿hay mesa hoy a las 20:00?» o «Reserva a nombre de Samu, correo samuel@mail.com, para mañana».',
     component: null,
   }
 }
@@ -453,9 +548,10 @@ export default function Chatbot({ setPaginaActual, abierto, setAbierto }) {
       setEscribiendo(true)
 
       window.setTimeout(async () => {
-        const disponibilidad = await resolverConsultaDisponibilidad(texto, { irReservas })
-        const { text, component } =
-          disponibilidad ?? resolverRespuesta(texto, { irReservas })
+        const reserva =
+          (await resolverSolicitudReserva(texto, { irReservas })) ??
+          (await resolverConsultaDisponibilidad(texto, { irReservas }))
+        const { text, component } = reserva ?? resolverRespuesta(texto, { irReservas })
 
         setMensajes((prev) => [
           ...prev,
