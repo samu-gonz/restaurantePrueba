@@ -286,3 +286,13 @@
   color: var(--text-muted);
   opacity: 0.72;
 }
+
+@media (max-width: 47.99rem) {
+  .navbar-float__start {
+    gap: 0.5rem;
+  }
+
+  .navbar-float__end {
+    gap: 0.4rem;
+  }
+}
