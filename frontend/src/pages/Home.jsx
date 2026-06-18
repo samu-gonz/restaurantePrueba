@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { MAPS_EMBED_URL, MAPS_URL, UBICACION_RESTAURANTE } from '../config/ubicacion'
 import { IMAGEN_CARTA_FALLBACK, menuData } from '../data/db'
 import './Home.css'
 
@@ -9,10 +10,6 @@ const COLOR_FONDO_CARD = '#161616'
 const COLOR_TEXTO_MUTED = '#A3A3A3'
 const COLOR_ALERGENO = '#737373'
 const RADIUS_TOP = 16
-
-const MAPS_URL = `https://maps.google.com/?q=${encodeURIComponent(
-  'Camino El Vinculito 14 Los Realejos Tenerife',
-)}`
 
 const CATEGORIAS = [
   { id: 'todos', label: 'Todos' },
@@ -313,22 +310,30 @@ export default function Home({ setPaginaActual }) {
         className="bento-grid home-bento"
         aria-label="Información del local y contacto"
       >
-        <article className="bento-card">
+        <article id="ubicacion" className="bento-card">
           <h3 className="bento-card__title">Nuestra Ubicación</h3>
           <p className="bento-card__text">
             <span style={{ color: '#9B111E', marginRight: '0.35rem' }} aria-hidden="true">
               📍
             </span>
-            Camino El Vinculito, Nº 14
+            {UBICACION_RESTAURANTE.calle}
             <br />
-            La Cruz Santa, 38413, Los Realejos, Santa Cruz de Tenerife
+            {UBICACION_RESTAURANTE.localidad}
           </p>
+          <iframe
+            className="bento-card__mapa"
+            title={`Mapa de ${UBICACION_RESTAURANTE.nombre}`}
+            src={MAPS_EMBED_URL}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            allowFullScreen
+          />
           <p className="bento-card__text">
             Nos encontramos en el corazón de La Cruz Santa, rodeados de tradición
-            vitivinícola. Ven a visitarnos en Camino El Vinculito, Nº 14, Los Realejos.
+            vitivinícola. Ven a visitarnos en {UBICACION_RESTAURANTE.calle}, Los Realejos.
           </p>
           <a
-            href="https://www.google.com/maps/search/?api=1&query=Camino+El+Vinculito+14+Los+Realejos+Tenerife"
+            href={MAPS_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="btn-premium bento-card__btn"

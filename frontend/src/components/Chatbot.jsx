@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { CONFIG_RESTAURANTE, formatearPrecio, menuData } from '../data/db'
+import { MAPS_URL, UBICACION_RESTAURANTE } from '../config/ubicacion'
 import './Chatbot.css'
 
 const COLOR_VINO = '#9B111E'
@@ -71,6 +72,19 @@ function BotonIrReservas({ onClick }) {
     <button type="button" className="chatbot-rich-btn" onClick={onClick}>
       📅 Ir a Reservas
     </button>
+  )
+}
+
+function BotonAbrirMaps() {
+  return (
+    <a
+      className="chatbot-rich-btn"
+      href={MAPS_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      📍 Abrir en Google Maps
+    </a>
   )
 }
 
@@ -148,6 +162,13 @@ function TablaHorarios() {
 function resolverRespuesta(textoUsuario, { irReservas }) {
   const texto = normalizarTexto(textoUsuario)
   const incluye = (...palabras) => palabras.some((p) => texto.includes(p))
+
+  if (incluye('ubicacion', 'ubicación', 'direccion', 'dirección', 'donde', 'mapa', 'llegar', 'como llegar')) {
+    return {
+      text: `Estamos en ${UBICACION_RESTAURANTE.calle}, ${UBICACION_RESTAURANTE.localidad}.`,
+      component: <BotonAbrirMaps />,
+    }
+  }
 
   if (incluye('horario', 'abierto', 'cierra', 'abre', 'hora')) {
     return {
