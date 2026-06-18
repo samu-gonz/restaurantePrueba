@@ -28,11 +28,31 @@ export function cabecerasAdminAutenticado() {
   return { Authorization: `Bearer ${token}` }
 }
 
+function credencialesLocalesValidas(usuarioNormalizado, contrasenaEnviada) {
+  if (!CONTRASENA_ADMIN_LOCAL) return false
+  return (
+    usuarioNormalizado === USUARIO_ADMIN_LOCAL &&
+    contrasenaEnviada === CONTRASENA_ADMIN_LOCAL
+  )
+}
+
+function iniciarSesionLocal(usuarioNormalizado, contrasenaEnviada) {
+  if (!credencialesLocalesValidas(usuarioNormalizado, contrasenaEnviada)) {
+    throw new Error('Usuario o contraseña incorrectos.')
+  }
+  guardarTokenAdmin(TOKEN_SESION_LOCAL)
+}
+
 export async function iniciarSesionAdmin(usuario, contrasena) {
   const usuarioNormalizado = usuario.trim()
   const contrasenaEnviada = contrasena
 
-  if (backendConfigurado()) {
+  if (!backendConfigurado()) {
+    iniciarSesionLocal(usuarioNormalizado, contrasenaEnviada)
+    return
+  }
+
+  try {
     const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -44,26 +64,38 @@ export async function iniciarSesionAdmin(usuario, contrasena) {
 
     const data = await response.json().catch(() => ({}))
 
-    if (!response.ok) {
-      throw new Error(data?.error || 'No se pudo iniciar sesión.')
+    if (response.ok) {
+      guardarTokenAdmin(data.token)
+      return
     }
 
-    guardarTokenAdmin(data.token)
-    return
-  }
+    if (
+      response.status === 503 &&
+      credencialesLocalesValidas(usuarioNormalizado, contrasenaEnviada)
+    ) {
+      guardarTokenAdmin(TOKEN_SESION_LOCAL)
+      return
+    }
 
-  if (!CONTRASENA_ADMIN_LOCAL) {
-    throw new Error(
-      'Credenciales de admin no configuradas. Define VITE_ADMIN_PASSWORD en frontend/.env',
-    )
-  }
+    throw new Error(data?.error || 'No se pudo iniciar sesión.')
+  } catch (error) {
+    if (
+      error.message === 'Failed to fetch' &&
+      credencialesLocalesValidas(usuarioNormalizado, contrasenaEnviada)
+    ) {
+      guardarTokenAdmin(TOKEN_SESION_LOCAL)
+      return
+    }
 
-  if (
-    usuarioNormalizado !== USUARIO_ADMIN_LOCAL ||
-    contrasenaEnviada !== CONTRASENA_ADMIN_LOCAL
-  ) {
-    throw new Error('Usuario o contraseña incorrectos.')
-  }
+    if (error.message?.includes('Usuario o contraseña')) {
+      throw error
+    }
 
-  guardarTokenAdmin(TOKEN_SESION_LOCAL)
+    if (credencialesLocalesValidas(usuarioNormalizado, contrasenaEnviada)) {
+      guardarTokenAdmin(TOKEN_SESION_LOCAL)
+      return
+    }
+
+    throw error
+  }
 }

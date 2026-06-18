@@ -632,7 +632,9 @@ app.listen(PORT, () => {
   if (ADMIN_PASSWORD) {
     console.log('[admin] Panel protegido activo → usuario:', ADMIN_USER)
   } else {
-    console.warn('[admin] Sin ADMIN_PASSWORD. El login del panel no funcionará.')
+    console.warn(
+      '[admin] Sin ADMIN_PASSWORD en .env — añade ADMIN_PASSWORD y reinicia el servidor.',
+    )
   }
 })
 
