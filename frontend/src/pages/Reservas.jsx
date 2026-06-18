@@ -262,9 +262,9 @@ export default function Reservas({ setPaginaActual }) {
     } catch (error) {
       const mensaje =
         error.name === 'AbortError'
-          ? 'El servidor tardó demasiado. Si la reserva se confirmó, revisa tu correo; si no, inténtalo de nuevo.'
+          ? 'La solicitud tardó demasiado. Si recibiste el localizador, tu reserva está confirmada; si no, inténtalo de nuevo.'
           : error.message === 'Failed to fetch'
-            ? 'No hay conexión con el servidor. Comprueba que Render esté activo (abre /api/health).'
+            ? 'No pudimos conectar con el servidor en este momento. Comprueba tu conexión e inténtalo de nuevo.'
             : error.message
       setErrorMsg(mensaje)
     } finally {
@@ -295,10 +295,8 @@ export default function Reservas({ setPaginaActual }) {
       <div className="reservas-card">
         <h2 className="reservas-card__title">Reserva tu Mesa</h2>
         <p className="reservas-card__subtitle">
-          Máximo {MESAS_MAX} mesas por turno.
-          {backendConfigurado()
-            ? ' Gestión en tiempo real con el servidor.'
-            : ' Modo demo: reservas guardadas en tu navegador (sin correo).'}
+          Máximo {MESAS_MAX} mesas por turno. Confirma tu visita en segundos y recibe tu
+          localizador al instante.
         </p>
 
         {exito ? (
@@ -315,7 +313,7 @@ export default function Reservas({ setPaginaActual }) {
                 </>
               ) : (
                 <>
-                  Reserva guardada localmente. Email registrado: <strong>{exito.email}</strong>
+                  Reserva registrada correctamente. Email: <strong>{exito.email}</strong>
                 </>
               )}
             </p>

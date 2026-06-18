@@ -183,11 +183,7 @@ export const CATEGORIAS_MENU = {
   postres: 'Postres',
 }
 
-export const reservasOcupadasIniciales = {
-  '2026-05-30-almuerzo': 28,
-  '2026-05-30-cena': 30,
-  '2026-05-31-almuerzo': 12,
-}
+export const reservasOcupadasIniciales = {}
 
 export function claveReserva(fecha, turno) {
   return `${fecha}-${turno}`

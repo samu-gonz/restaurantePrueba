@@ -39,7 +39,7 @@ export default function App() {
         {paginaActual === 'admin' && <Admin />}
       </main>
 
-      <Footer />
+      <Footer onAccesoPersonal={() => cambiarPagina('admin')} />
 
       <Chatbot
         setPaginaActual={cambiarPagina}

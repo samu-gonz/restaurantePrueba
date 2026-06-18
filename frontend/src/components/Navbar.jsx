@@ -19,8 +19,8 @@ const TEXTO_CERRADO = 'Cerrado (Abre 12:00 / 19:30)'
 const ENLACES_NAV = [
   { id: 'inicio', label: 'Inicio', tipo: 'inicio' },
   { id: 'carta', label: 'Carta', tipo: 'seccion', seccion: 'carta-digital' },
+  { id: 'ubicacion', label: 'Ubicación', tipo: 'seccion', seccion: 'ubicacion' },
   { id: 'reservas', label: 'Reservar Mesa', tipo: 'pagina', pagina: 'reservas' },
-  { id: 'admin', label: 'Panel Admin', tipo: 'pagina', pagina: 'admin' },
   { id: 'chat', label: 'Asistente virtual', tipo: 'chat' },
 ]
 
@@ -289,6 +289,13 @@ export default function Navbar({ paginaActual, setPaginaActual, chatAbierto, onT
         </nav>
 
         <div className="sidebar-drawer__footer">
+          <button
+            type="button"
+            className="sidebar-admin-link"
+            onClick={() => irPagina('admin')}
+          >
+            Gestión de reservas
+          </button>
           <WidgetEstadoPremium estaAbierto={estaAbierto} />
         </div>
       </aside>

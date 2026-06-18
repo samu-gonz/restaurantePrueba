@@ -20,23 +20,22 @@ const CATEGORIAS = [
 ]
 
 const HERO_CARRUSEL_INTERVALO_MS = 4000
-const COLOR_ACENTO_VINO = '#9B111E'
 const imagenesCarrusel = [
   {
     url: 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=1600&h=600&q=80',
-    alt: 'Bodega tradicional de vino',
+    alt: 'Barricas de vino y bodega familiar en el norte de Tenerife',
   },
   {
     url: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1600&h=600&q=80',
-    alt: 'Carnes a la brasa',
+    alt: 'Carnes y guisos caseros cocinados a fuego lento',
   },
   {
     url: 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?auto=format&fit=crop&w=1600&h=600&q=80',
-    alt: 'Viñedos al atardecer',
+    alt: 'Viñedos y valles de La Cruz Santa al atardecer',
   },
   {
     url: 'https://images.unsplash.com/photo-1516685018646-549198525c1b?auto=format&fit=crop&w=1600&h=600&q=80',
-    alt: 'Mesa rústica con vino y pan',
+    alt: 'Mesa servida con vino de la casa y producto de temporada',
   },
 ]
 
@@ -187,11 +186,6 @@ function HeroCarruselPanoramico() {
                   ? 'home-hero-carousel__dot is-active'
                   : 'home-hero-carousel__dot'
               }
-              style={
-                index === currentImageIndex
-                  ? { backgroundColor: COLOR_ACENTO_VINO }
-                  : undefined
-              }
               onClick={() => irASlide(index)}
             />
           ))}
@@ -282,11 +276,11 @@ export default function Home({ setPaginaActual }) {
             <h1 id="home-hero-title" className="home-hero__title">
               Sabor de la tierra.
               <br />
-              <span className="home-hero__accent">Tradición moderna.</span>
+              <span className="home-hero__accent">Tradición canaria.</span>
             </h1>
             <p className="home-hero__desc">
-              Vino de nuestra cosecha en el norte de Tenerife y cocina canaria con
-              mirada contemporánea.
+              Producto fresco de temporada, vino de nuestra cosecha y cocina hecha con
+              pasión en el corazón vitivinícola de Los Realejos.
             </p>
             <div className="home-hero__actions">
               <button type="button" className="btn-premium" onClick={irCarta}>
@@ -313,12 +307,14 @@ export default function Home({ setPaginaActual }) {
         <article id="ubicacion" className="bento-card">
           <h3 className="bento-card__title">Nuestra Ubicación</h3>
           <p className="bento-card__text">
-            <span style={{ color: '#9B111E', marginRight: '0.35rem' }} aria-hidden="true">
-              📍
-            </span>
-            {UBICACION_RESTAURANTE.calle}
-            <br />
-            {UBICACION_RESTAURANTE.localidad}
+            <a className="bento-card__direccion" href={MAPS_URL} target="_blank" rel="noopener noreferrer">
+              <span style={{ color: '#9B111E', marginRight: '0.35rem' }} aria-hidden="true">
+                📍
+              </span>
+              {UBICACION_RESTAURANTE.calle}
+              <br />
+              {UBICACION_RESTAURANTE.localidad}
+            </a>
           </p>
           <iframe
             className="bento-card__mapa"
@@ -329,8 +325,8 @@ export default function Home({ setPaginaActual }) {
             allowFullScreen
           />
           <p className="bento-card__text">
-            Nos encontramos en el corazón de La Cruz Santa, rodeados de tradición
-            vitivinícola. Ven a visitarnos en {UBICACION_RESTAURANTE.calle}, Los Realejos.
+            En La Cruz Santa, entre viñedos y valle, cocinamos cada día con ingredientes
+            de proximidad y el carácter de un guachinche auténtico del norte de Tenerife.
           </p>
           <a
             href={MAPS_URL}
@@ -344,7 +340,8 @@ export default function Home({ setPaginaActual }) {
         <article className="bento-card bento-card--accent bento-card--vino">
           <h3 className="bento-card__title">Vino de Cosecha</h3>
           <p className="bento-card__text">
-            Listán Negro y Blanco Afrutado de nuestras barricas.
+            Listán Negro y blanco afrutado de nuestras barricas, servidos en jarra para
+            acompañar guisos, carnes y pescados del día.
           </p>
         </article>
       </section>

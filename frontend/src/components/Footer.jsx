@@ -1,16 +1,24 @@
-/** Sustituye por el teléfono real del local (solo dígitos en enlace, con +34). */
-const TELEFONO_ENLACE = '+34922123456'
-const TELEFONO_VISIBLE = '+34 922 123 456'
+import { MAPS_URL, TELEFONO_CONTACTO, UBICACION_RESTAURANTE } from '../config/ubicacion'
 
-export default function Footer() {
+export default function Footer({ onAccesoPersonal }) {
+  const direccionCompleta = `${UBICACION_RESTAURANTE.calle}, ${UBICACION_RESTAURANTE.localidad}`
+
   return (
     <footer className="app-footer">
       <p className="app-footer__copyright">
-        © 2026 Guachinche El Realejo. Proyecto de Portfolio de Desarrollo Web.
+        © 2026 {UBICACION_RESTAURANTE.nombre}. Cocina canaria y vino de la casa.
       </p>
-      <a className="app-footer__telefono" href={`tel:${TELEFONO_ENLACE}`}>
-        {TELEFONO_VISIBLE}
+      <a className="app-footer__direccion" href={MAPS_URL} target="_blank" rel="noopener noreferrer">
+        {direccionCompleta}
       </a>
+      <a className="app-footer__telefono" href={`tel:${TELEFONO_CONTACTO.enlace}`}>
+        {TELEFONO_CONTACTO.visible}
+      </a>
+      {typeof onAccesoPersonal === 'function' && (
+        <button type="button" className="app-footer__staff" onClick={onAccesoPersonal}>
+          Acceso personal
+        </button>
+      )}
     </footer>
   )
 }

@@ -1,4 +1,4 @@
-/** Ubicación del local en La Cruz Santa (Los Realejos). */
+/** Ubicación y contacto del local en La Cruz Santa (Los Realejos). */
 export const UBICACION_RESTAURANTE = {
   nombre: 'Guachinche El Realejo',
   calle: 'Camino El Vinculito, Nº 14',
@@ -6,6 +6,12 @@ export const UBICACION_RESTAURANTE = {
   latitud: 28.379258,
   longitud: -16.565105,
   zoomMaps: 17,
+}
+
+/** Sustituye por el teléfono real del local antes de la presentación. */
+export const TELEFONO_CONTACTO = {
+  enlace: '+34922123456',
+  visible: '+34 922 123 456',
 }
 
 /** Abre Google Maps en el pin exacto (móvil, tablet y escritorio). */

@@ -146,7 +146,7 @@ export default function Admin() {
               {reservas.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="admin-table__empty">
-                    Aún no hay reservas. Haz una prueba desde «Reservar Mesa».
+                    Aún no hay reservas registradas para hoy.
                   </td>
                 </tr>
               ) : (

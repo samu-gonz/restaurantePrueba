@@ -151,8 +151,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   padding: 0;
   font-size: 1.35rem;
   line-height: 1;
@@ -183,9 +185,11 @@
 }
 
 .sidebar-drawer__link {
-  display: block;
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
   width: 100%;
-  padding: 1rem 0;
+  padding: 0.85rem 0;
   font-size: 1.125rem;
   font-weight: 500;
   text-align: left;
@@ -213,6 +217,9 @@
 }
 
 .sidebar-admin-link {
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
   width: 100%;
   margin: 0 0 0.85rem;
   padding: 0.65rem 0.8rem;

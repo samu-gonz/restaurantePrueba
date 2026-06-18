@@ -197,9 +197,28 @@ button:focus-visible {
   font-size: 0.85rem;
 }
 
-.app-footer__telefono {
+.app-footer__direccion {
   display: inline-block;
-  margin-top: 0.65rem;
+  margin-top: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: #6b6b6b;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.app-footer__direccion:hover {
+  color: #a3a3a3;
+}
+
+.app-footer__telefono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  margin-top: 0.25rem;
+  padding: 0.35rem 0.75rem;
   font-size: 0.8125rem;
   color: #6b6b6b;
   text-decoration: none;
@@ -215,6 +234,30 @@ button:focus-visible {
   outline: 2px solid var(--accent-color);
   outline-offset: 3px;
   border-radius: 4px;
+}
+
+.app-footer__direccion:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.app-footer__staff {
+  display: block;
+  margin: 0.75rem auto 0;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #525252;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.app-footer__staff:hover {
+  color: #737373;
 }
 
 /* ── 3. Utilidades globales ─────────────────────────────────────────────── */
@@ -320,6 +363,10 @@ textarea:focus {
 /* Botón premium */
 .btn-premium,
 .btn--fill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
   background: var(--accent-color);
   color: var(--text-main);
   border: none;
@@ -500,6 +547,24 @@ textarea:focus {
   letter-spacing: 0.02em;
   text-align: left;
   line-height: 1.2;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 48rem) {
+  .navbar-brand {
+    font-size: 1.05rem;
+    max-width: 9.5rem;
+  }
+}
+
+@media (min-width: 48rem) and (max-width: 64rem) {
+  .navbar-brand {
+    font-size: 1.15rem;
+    max-width: 14rem;
+  }
 }
 
 .navbar-brand__dot {
@@ -969,9 +1034,33 @@ textarea:focus {
 }
 
 .bento-card__btn {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
   text-decoration: none;
   font-size: 0.9rem;
+}
+
+.bento-card__direccion {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.bento-card__direccion:hover {
+  color: var(--text-main);
+}
+
+.home-bento {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 48rem) {
+  .home-bento {
+    grid-template-columns: 1.4fr 1fr;
+    align-items: stretch;
+  }
 }
 
 .bento-card__mapa {
@@ -1008,8 +1097,13 @@ textarea:focus {
 }
 
 .carta-filter-btn {
-  padding: 0.65rem 1.25rem;
-  font-size: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  padding: 0.75rem 1.35rem;
+  font-size: 0.8rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
