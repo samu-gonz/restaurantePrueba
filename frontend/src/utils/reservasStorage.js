@@ -64,6 +64,54 @@ export function guardarReservasEnStorage(reservas) {
   localStorage.setItem(STORAGE_KEY_LISTA, JSON.stringify(reservas))
 }
 
+function normalizarReservaCache(reserva) {
+  return {
+    id: reserva.id ?? Date.now(),
+    nombre: reserva.nombre ?? '',
+    email: reserva.email ?? '',
+    fecha: reserva.fecha,
+    turno: reserva.turno === 'almuerzo' ? 'almuerzo' : 'cena',
+    localizador: reserva.localizador ?? '',
+    createdAt: reserva.createdAt ?? new Date().toISOString(),
+  }
+}
+
+export function reconstruirAforoDesdeReservas(reservas) {
+  const aforo = {}
+  for (const reserva of reservas) {
+    if (!reserva.fecha || !reserva.turno) continue
+    const clave = claveReserva(reserva.fecha, reserva.turno)
+    aforo[clave] = (aforo[clave] ?? 0) + 1
+  }
+  guardarAforoEnStorage(aforo)
+  return aforo
+}
+
+/** Sustituye la caché local con el listado del servidor (admin / sincronización). */
+export function sincronizarReservasEnCacheLocal(reservas) {
+  const lista = Array.isArray(reservas) ? reservas.map(normalizarReservaCache) : []
+  guardarReservasEnStorage(lista)
+  reconstruirAforoDesdeReservas(lista)
+  return lista
+}
+
+/** Añade una reserva a la caché local tras crearla en el servidor. */
+export function agregarReservaAlCacheLocal(reserva) {
+  const normalizada = normalizarReservaCache(reserva)
+  if (!normalizada.fecha || !normalizada.turno || !normalizada.localizador) return null
+
+  const lista = cargarReservasDesdeStorage()
+  if (lista.some((r) => r.localizador === normalizada.localizador)) {
+    reconstruirAforoDesdeReservas(lista)
+    return normalizada
+  }
+
+  lista.push(normalizada)
+  guardarReservasEnStorage(lista)
+  reconstruirAforoDesdeReservas(lista)
+  return normalizada
+}
+
 export function consultarDisponibilidadLocal(fecha, turno) {
   const aforo = cargarAforoDesdeStorage()
   const ocupadas = contarMesasOcupadas(aforo, fecha, turno)

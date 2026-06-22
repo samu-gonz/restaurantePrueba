@@ -7,7 +7,7 @@ import {
   parsearHoraDesdeTexto,
   turnoDesdeHora,
 } from './disponibilidadConsulta'
-import { crearReservaLocal } from './reservasStorage'
+import { crearReservaLocal, agregarReservaAlCacheLocal } from './reservasStorage'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i
 
@@ -135,6 +135,13 @@ export async function ejecutarReservaDesdeChat({ nombre, email, fecha, turno }) 
     const data = await response.json().catch(() => ({}))
     if (!response.ok) {
       throw new Error(data?.error || 'No se pudo completar la reserva.')
+    }
+
+    if (data?.localizador) {
+      agregarReservaAlCacheLocal({
+        ...data.reserva,
+        localizador: data.localizador,
+      })
     }
 
     return data

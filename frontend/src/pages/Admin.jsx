@@ -7,7 +7,7 @@ import {
   iniciarSesionAdmin,
   sesionAdminActiva,
 } from '../utils/adminAuth'
-import { cargarReservasDesdeStorage } from '../utils/reservasStorage'
+import { cargarReservasDesdeStorage, sincronizarReservasEnCacheLocal } from '../utils/reservasStorage'
 
 function formatearFecha(fechaISO) {
   if (!fechaISO) return '—'
@@ -159,75 +159,90 @@ function PanelReservasAdmin({ onCerrarSesion }) {
   const [error, setError] = useState('')
   const [aviso, setAviso] = useState('')
   const [fuente, setFuente] = useState('')
+  const [almacenamiento, setAlmacenamiento] = useState('')
   const [filtroFecha, setFiltroFecha] = useState('')
 
   const cargarReservas = useCallback(async () => {
-    setLoading(true)
     setError('')
     setAviso('')
 
-    if (!backendConfigurado()) {
-      setReservas(ordenarReservas(cargarReservasDesdeStorage()))
+    const cache = ordenarReservas(cargarReservasDesdeStorage())
+    if (cache.length > 0) {
+      setReservas(cache)
       setFuente('local')
+    }
+
+    if (!backendConfigurado()) {
       setLoading(false)
       return
     }
 
-    const controller = new AbortController()
-    const timeoutId = window.setTimeout(() => controller.abort(), 15_000)
+    setLoading(true)
 
     const url = new URL(`${API_BASE_URL}/api/admin/reservas`)
     if (filtroFecha) url.searchParams.set('fecha', filtroFecha)
 
-    try {
-      const response = await fetch(url.toString(), {
-        signal: controller.signal,
-        headers: cabecerasAdminAutenticado(),
-      })
-      const data = await response.json().catch(() => ({}))
+    const intentarCarga = async (intento) => {
+      const controller = new AbortController()
+      const timeoutId = window.setTimeout(() => controller.abort(), 60_000)
 
-      if (response.status === 401) {
-        cerrarSesionAdmin()
-        onCerrarSesion()
-        return
+      try {
+        const response = await fetch(url.toString(), {
+          signal: controller.signal,
+          headers: cabecerasAdminAutenticado(),
+        })
+        const data = await response.json().catch(() => ({}))
+
+        if (response.status === 401) {
+          cerrarSesionAdmin()
+          onCerrarSesion()
+          return
+        }
+
+        if (!response.ok) {
+          throw new Error(data?.error || 'No se pudo cargar el panel de administración.')
+        }
+
+        const lista = ordenarReservas(Array.isArray(data?.reservas) ? data.reservas : [])
+        sincronizarReservasEnCacheLocal(lista)
+        setReservas(lista)
+        setFuente('servidor')
+        setAlmacenamiento(data?.almacenamiento ?? '')
+      } catch (err) {
+        if (err.name === 'AbortError' && intento === 0) {
+          setAviso('El servidor está despertando. Reintentando…')
+          await intentarCarga(1)
+          return
+        }
+
+        if (err.message?.includes('401') || err.message?.includes('autorizado')) {
+          cerrarSesionAdmin()
+          onCerrarSesion()
+          return
+        }
+
+        if (cache.length > 0) {
+          setFuente('local')
+          setAviso(
+            err.name === 'AbortError'
+              ? 'El servidor tardó demasiado. Mostrando reservas guardadas en este dispositivo.'
+              : 'Sin conexión con el servidor. Mostrando reservas de este navegador.',
+          )
+        } else {
+          setFuente('')
+          setError(
+            err.name === 'AbortError'
+              ? 'El servidor tardó demasiado. Intenta de nuevo en unos segundos.'
+              : err.message || 'Error de conexión con el servidor.',
+          )
+        }
+      } finally {
+        window.clearTimeout(timeoutId)
       }
-
-      if (!response.ok) {
-        throw new Error(data?.error || 'No se pudo cargar el panel de administración.')
-      }
-
-      setReservas(ordenarReservas(Array.isArray(data?.reservas) ? data.reservas : []))
-      setFuente('servidor')
-    } catch (err) {
-      const locales = ordenarReservas(cargarReservasDesdeStorage())
-
-      if (err.message?.includes('401') || err.message?.includes('autorizado')) {
-        cerrarSesionAdmin()
-        onCerrarSesion()
-        return
-      }
-
-      setReservas(locales)
-
-      if (locales.length > 0) {
-        setFuente('local')
-        setAviso(
-          err.name === 'AbortError'
-            ? 'El servidor tardó demasiado. Mostrando reservas guardadas en este dispositivo.'
-            : 'Sin conexión con el servidor. Mostrando reservas de este navegador.',
-        )
-      } else {
-        setFuente('')
-        setError(
-          err.name === 'AbortError'
-            ? 'El servidor tardó demasiado. Intenta de nuevo en unos segundos.'
-            : err.message || 'Error de conexión con el servidor.',
-        )
-      }
-    } finally {
-      window.clearTimeout(timeoutId)
-      setLoading(false)
     }
+
+    await intentarCarga(0)
+    setLoading(false)
   }, [filtroFecha, onCerrarSesion])
 
   useEffect(() => {
@@ -240,7 +255,9 @@ function PanelReservasAdmin({ onCerrarSesion }) {
 
   const subtitulo =
     fuente === 'servidor'
-      ? 'Reservas guardadas en base de datos MySQL.'
+      ? almacenamiento === 'mysql'
+        ? 'Reservas guardadas en base de datos MySQL.'
+        : 'Reservas guardadas en el servidor.'
       : fuente === 'local'
         ? 'Reservas guardadas en este navegador.'
         : 'Listado de reservas del restaurante.'

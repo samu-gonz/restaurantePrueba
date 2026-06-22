@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { API_BASE_URL, backendConfigurado } from '../config/api'
 import { CONFIG_RESTAURANTE } from '../data/db'
 import {
+  agregarReservaAlCacheLocal,
   consumirPrefillReserva,
   consultarDisponibilidadLocal,
   crearReservaLocal,
@@ -258,6 +259,14 @@ export default function Reservas({ setPaginaActual }) {
 
     try {
       const data = await ejecutarReserva()
+
+      if (backendConfigurado() && data?.localizador) {
+        agregarReservaAlCacheLocal({
+          ...data.reserva,
+          localizador: data.localizador,
+        })
+      }
+
       const turnoTexto =
         turno === 'almuerzo' ? 'Almuerzo (12:00 – 16:00)' : 'Cena (19:30 – 23:00)'
 
