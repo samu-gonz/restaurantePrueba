@@ -246,19 +246,12 @@ function verificarTokenAdmin(token) {
   }
 }
 
-function contrasenaAdminValida(contrasena) {
-  const contrasenaEnviada = String(contrasena ?? '').trim()
-  if (!contrasenaEnviada) return false
-
-  const desdeEnv = String(ADMIN_PASSWORD ?? '').trim()
-  if (desdeEnv && contrasenaEnviada === desdeEnv) return true
-  return contrasenaEnviada === 'admin'
-}
-
 function credencialesAdminValidas(usuario, contrasena) {
   const usuarioNormalizado = normalizarTexto(String(usuario ?? ''))
+  const contrasenaEnviada = String(contrasena ?? '')
+
   return (
-    usuarioNormalizado === normalizarTexto(ADMIN_USER) && contrasenaAdminValida(contrasena)
+    usuarioNormalizado === normalizarTexto(ADMIN_USER) && contrasenaEnviada === 'admin'
   )
 }
 
@@ -520,7 +513,7 @@ app.post('/api/admin/login', (req, res) => {
   }
 
   const usuarioNormalizado = normalizarTexto(String(usuario ?? ''))
-  const contrasenaEnviada = String(contrasena ?? '').trim()
+  const contrasenaEnviada = String(contrasena ?? '')
 
   if (!credencialesAdminValidas(usuarioNormalizado, contrasenaEnviada)) {
     return res.status(401).json({
