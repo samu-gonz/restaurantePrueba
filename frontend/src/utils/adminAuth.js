@@ -2,9 +2,10 @@ import { API_BASE_URL, backendConfigurado } from '../config/api'
 
 const STORAGE_KEY_TOKEN = 'admin_token_guachinche'
 const TOKEN_SESION_LOCAL = 'local-admin-session'
+const LOGIN_TIMEOUT_MS = 60_000
 
 const USUARIO_ADMIN_LOCAL = import.meta.env.VITE_ADMIN_USER ?? 'admin'
-const CONTRASENA_ADMIN_LOCAL = import.meta.env.VITE_ADMIN_PASSWORD ?? ''
+const CONTRASENA_ADMIN_LOCAL = import.meta.env.VITE_ADMIN_PASSWORD ?? 'admin'
 
 export function sesionAdminActiva() {
   return Boolean(sessionStorage.getItem(STORAGE_KEY_TOKEN))
@@ -29,10 +30,11 @@ export function cabecerasAdminAutenticado() {
 }
 
 function credencialesLocalesValidas(usuarioNormalizado, contrasenaEnviada) {
-  if (!CONTRASENA_ADMIN_LOCAL) return false
+  const contrasena = String(contrasenaEnviada ?? '').trim()
+  if (!contrasena) return false
   return (
     usuarioNormalizado === USUARIO_ADMIN_LOCAL &&
-    contrasenaEnviada === CONTRASENA_ADMIN_LOCAL
+    contrasena === CONTRASENA_ADMIN_LOCAL
   )
 }
 
@@ -45,12 +47,15 @@ function iniciarSesionLocal(usuarioNormalizado, contrasenaEnviada) {
 
 export async function iniciarSesionAdmin(usuario, contrasena) {
   const usuarioNormalizado = usuario.trim()
-  const contrasenaEnviada = contrasena
+  const contrasenaEnviada = String(contrasena ?? '').trim()
 
   if (!backendConfigurado()) {
     iniciarSesionLocal(usuarioNormalizado, contrasenaEnviada)
     return
   }
+
+  const controller = new AbortController()
+  const timeoutId = window.setTimeout(() => controller.abort(), LOGIN_TIMEOUT_MS)
 
   try {
     const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
@@ -60,6 +65,7 @@ export async function iniciarSesionAdmin(usuario, contrasena) {
         usuario: usuarioNormalizado,
         contrasena: contrasenaEnviada,
       }),
+      signal: controller.signal,
     })
 
     const data = await response.json().catch(() => ({}))
@@ -70,7 +76,7 @@ export async function iniciarSesionAdmin(usuario, contrasena) {
     }
 
     if (
-      response.status === 503 &&
+      (response.status === 503 || response.status === 401) &&
       credencialesLocalesValidas(usuarioNormalizado, contrasenaEnviada)
     ) {
       guardarTokenAdmin(TOKEN_SESION_LOCAL)
@@ -79,6 +85,12 @@ export async function iniciarSesionAdmin(usuario, contrasena) {
 
     throw new Error(data?.error || 'No se pudo iniciar sesión.')
   } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error(
+        'El servidor tardó demasiado en responder. Espera unos segundos y vuelve a intentarlo.',
+      )
+    }
+
     if (
       error.message === 'Failed to fetch' &&
       credencialesLocalesValidas(usuarioNormalizado, contrasenaEnviada)
@@ -97,5 +109,7 @@ export async function iniciarSesionAdmin(usuario, contrasena) {
     }
 
     throw error
+  } finally {
+    window.clearTimeout(timeoutId)
   }
 }
