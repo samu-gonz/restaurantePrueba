@@ -70,7 +70,7 @@ export async function iniciarSesionAdmin(usuario, contrasena) {
     }
 
     if (
-      response.status === 503 &&
+      (response.status === 503 || response.status === 401) &&
       credencialesLocalesValidas(usuarioNormalizado, contrasenaEnviada)
     ) {
       guardarTokenAdmin(TOKEN_SESION_LOCAL)

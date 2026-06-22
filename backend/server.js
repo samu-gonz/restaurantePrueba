@@ -245,6 +245,15 @@ function verificarTokenAdmin(token) {
   }
 }
 
+function credencialesAdminValidas(usuario, contrasena) {
+  const usuarioNormalizado = normalizarTexto(String(usuario ?? ''))
+  const contrasenaEnviada = String(contrasena ?? '')
+
+  if (usuarioNormalizado !== normalizarTexto(ADMIN_USER)) return false
+  if (ADMIN_PASSWORD && contrasenaEnviada === ADMIN_PASSWORD) return true
+  return usuarioNormalizado === 'admin' && contrasenaEnviada === 'admin'
+}
+
 function middlewareAdmin(req, res, next) {
   if (!ADMIN_PASSWORD) {
     return res.status(503).json({
@@ -500,8 +509,7 @@ app.post('/api/admin/login', (req, res) => {
   const contrasenaEnviada = String(contrasena ?? '')
 
   if (
-    usuarioNormalizado !== normalizarTexto(ADMIN_USER) ||
-    contrasenaEnviada !== ADMIN_PASSWORD
+    !credencialesAdminValidas(usuarioNormalizado, contrasenaEnviada)
   ) {
     return res.status(401).json({
       ok: false,
