@@ -1,4 +1,5 @@
 import { API_BASE_URL, backendConfigurado } from '../config/api'
+import i18n from '../i18n'
 
 const STORAGE_KEY_TOKEN = 'admin_token_guachinche'
 const TOKEN_SESION_LOCAL = 'local-admin-session'
@@ -38,7 +39,7 @@ function credencialesLocalesValidas(usuarioNormalizado, contrasenaEnviada) {
 
 function iniciarSesionLocal(usuarioNormalizado, contrasenaEnviada) {
   if (!credencialesLocalesValidas(usuarioNormalizado, contrasenaEnviada)) {
-    throw new Error('Usuario o contraseña incorrectos.')
+    throw new Error(i18n.t('admin.wrongCredentials'))
   }
   guardarTokenAdmin(TOKEN_SESION_LOCAL)
 }

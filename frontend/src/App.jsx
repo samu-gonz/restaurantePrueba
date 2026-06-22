@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import Chatbot from './components/Chatbot'
 import Footer from './components/Footer'
@@ -11,6 +12,7 @@ import Reservas from './pages/Reservas'
  * paginaActual: 'home' | 'reservas'
  */
 export default function App() {
+  const { t } = useTranslation()
   const [paginaActual, setPaginaActual] = useState('home')
   const [chatAbierto, setChatAbierto] = useState(false)
 
@@ -23,7 +25,7 @@ export default function App() {
   return (
     <div className="app">
       <a href="#contenido" className="skip-link">
-        Saltar al contenido
+        {t('common.skipToContent')}
       </a>
 
       <Navbar

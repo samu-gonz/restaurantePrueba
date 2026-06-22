@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { IconoChat } from './Chatbot'
+import LanguageSwitcher from './LanguageSwitcher'
 import './Navbar.css'
-
-/* ── Horario de apertura ─────────────────────────────────────────────────── */
 
 function comprobarApertura(fecha = new Date()) {
   const tiempoActual = fecha.getHours() + fecha.getMinutes() / 60
@@ -13,16 +13,6 @@ function comprobarApertura(fecha = new Date()) {
 
 const COLOR_ABIERTO = '#22c55e'
 const COLOR_CERRADO = '#525252'
-const TEXTO_ABIERTO = 'Abierto Ahora'
-const TEXTO_CERRADO = 'Cerrado (Abre 12:00 / 19:30)'
-
-const ENLACES_NAV = [
-  { id: 'inicio', label: 'Inicio', tipo: 'inicio' },
-  { id: 'carta', label: 'Carta', tipo: 'seccion', seccion: 'carta-digital' },
-  { id: 'ubicacion', label: 'Ubicación', tipo: 'seccion', seccion: 'ubicacion' },
-  { id: 'reservas', label: 'Reservar Mesa', tipo: 'pagina', pagina: 'reservas' },
-  { id: 'chat', label: 'Asistente virtual', tipo: 'chat' },
-]
 
 const ESTILO_NAVBAR_GLASS = {
   background: 'rgba(13, 13, 13, 0.78)',
@@ -47,6 +37,10 @@ const ESTILO_SIDEBAR = {
 }
 
 function WidgetEstadoPremium({ estaAbierto }) {
+  const { t } = useTranslation()
+  const textoAbierto = t('common.open')
+  const textoCerrado = t('common.closed')
+
   return (
     <div
       className={
@@ -56,7 +50,7 @@ function WidgetEstadoPremium({ estaAbierto }) {
       }
       role="status"
       aria-live="polite"
-      aria-label={estaAbierto ? TEXTO_ABIERTO : TEXTO_CERRADO}
+      aria-label={estaAbierto ? textoAbierto : textoCerrado}
     >
       <span
         className={
@@ -76,16 +70,28 @@ function WidgetEstadoPremium({ estaAbierto }) {
             : 'sidebar-status-widget__text sidebar-status-widget__text--closed'
         }
       >
-        {estaAbierto ? TEXTO_ABIERTO : TEXTO_CERRADO}
+        {estaAbierto ? textoAbierto : textoCerrado}
       </span>
     </div>
   )
 }
 
 export default function Navbar({ paginaActual, setPaginaActual, chatAbierto, onToggleChat }) {
+  const { t } = useTranslation()
   const [estaAbierto, setEstaAbierto] = useState(() => comprobarApertura())
   const [menuAbierto, setMenuAbierto] = useState(false)
   const [seccionActiva, setSeccionActiva] = useState('inicio')
+
+  const enlacesNav = useMemo(
+    () => [
+      { id: 'inicio', label: t('nav.home'), tipo: 'inicio' },
+      { id: 'carta', label: t('nav.menu'), tipo: 'seccion', seccion: 'carta-digital' },
+      { id: 'ubicacion', label: t('nav.location'), tipo: 'seccion', seccion: 'ubicacion' },
+      { id: 'reservas', label: t('nav.bookTable'), tipo: 'pagina', pagina: 'reservas' },
+      { id: 'chat', label: t('nav.assistant'), tipo: 'chat' },
+    ],
+    [t],
+  )
 
   const cerrarMenu = useCallback(() => setMenuAbierto(false), [])
   const abrirMenu = useCallback(() => setMenuAbierto(true), [])
@@ -192,7 +198,7 @@ export default function Navbar({ paginaActual, setPaginaActual, chatAbierto, onT
       <nav
         className="navbar-float"
         style={ESTILO_NAVBAR_GLASS}
-        aria-label="Navegación principal"
+        aria-label={t('nav.main')}
       >
         <div className="navbar-float__inner">
           <div className="navbar-float__start">
@@ -201,7 +207,7 @@ export default function Navbar({ paginaActual, setPaginaActual, chatAbierto, onT
               className="navbar-hamburger"
               aria-expanded={menuAbierto}
               aria-controls="sidebar-drawer"
-              aria-label="Abrir menú"
+              aria-label={t('nav.openMenu')}
               onClick={abrirMenu}
             >
               <span className="navbar-hamburger__line" />
@@ -218,12 +224,16 @@ export default function Navbar({ paginaActual, setPaginaActual, chatAbierto, onT
           </div>
 
           <div className="navbar-float__end">
+            <div className="navbar-float__lang">
+              <LanguageSwitcher compact />
+            </div>
+
             <button
               type="button"
               className={
                 chatAbierto ? 'navbar-chat-btn navbar-chat-btn--active' : 'navbar-chat-btn'
               }
-              aria-label={chatAbierto ? 'Cerrar asistente virtual' : 'Abrir asistente virtual'}
+              aria-label={chatAbierto ? t('nav.closeChat') : t('nav.openChat')}
               aria-expanded={chatAbierto}
               aria-controls="chatbot-panel"
               onClick={onToggleChat}
@@ -236,7 +246,7 @@ export default function Navbar({ paginaActual, setPaginaActual, chatAbierto, onT
               className={`btn-premium navbar-float__cta ${paginaActual === 'reservas' ? 'navbar-cta--active' : ''}`}
               onClick={() => irPagina('reservas')}
             >
-              Reservar Mesa
+              {t('nav.bookTable')}
             </button>
           </div>
         </div>
@@ -247,7 +257,7 @@ export default function Navbar({ paginaActual, setPaginaActual, chatAbierto, onT
           type="button"
           className="sidebar-drawer__overlay sidebar-drawer__overlay--visible"
           style={ESTILO_OVERLAY_ABIERTO}
-          aria-label="Cerrar menú"
+          aria-label={t('nav.closeMenu')}
           onClick={cerrarMenu}
         />
       )}
@@ -260,22 +270,26 @@ export default function Navbar({ paginaActual, setPaginaActual, chatAbierto, onT
           transform: menuAbierto ? 'translateX(0)' : 'translateX(-100%)',
         }}
         aria-hidden={!menuAbierto}
-        aria-label="Menú de navegación"
+        aria-label={t('nav.menuTitle')}
       >
         <div className="sidebar-drawer__header">
-          <p className="sidebar-drawer__title">Menú</p>
+          <p className="sidebar-drawer__title">{t('nav.menuTitle')}</p>
           <button
             type="button"
             className="sidebar-drawer__close"
-            aria-label="Cerrar menú"
+            aria-label={t('nav.closeMenu')}
             onClick={cerrarMenu}
           >
             ✕
           </button>
         </div>
 
-        <nav className="sidebar-drawer__nav" aria-label="Secciones del sitio">
-          {ENLACES_NAV.map((enlace) => (
+        <div className="sidebar-drawer__lang">
+          <LanguageSwitcher />
+        </div>
+
+        <nav className="sidebar-drawer__nav" aria-label={t('nav.sections')}>
+          {enlacesNav.map((enlace) => (
             <button
               key={enlace.id}
               type="button"
@@ -297,7 +311,7 @@ export default function Navbar({ paginaActual, setPaginaActual, chatAbierto, onT
             className="sidebar-admin-link"
             onClick={() => irPagina('admin')}
           >
-            Gestión de reservas
+            {t('nav.admin')}
           </button>
           <WidgetEstadoPremium estaAbierto={estaAbierto} />
         </div>

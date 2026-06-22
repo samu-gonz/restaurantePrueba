@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import { CONFIG_RESTAURANTE, formatearPrecio, menuData } from '../data/db'
 import { MAPS_URL, UBICACION_RESTAURANTE } from '../config/ubicacion'
+import i18n from '../i18n'
+import { traducirCarta } from '../i18n/menu'
 import {
   describirEstadoDisponibilidad,
   esDiaCerrado,
@@ -20,12 +23,7 @@ import { guardarPrefillReserva } from '../utils/reservasStorage'
 import './Chatbot.css'
 
 const COLOR_VINO = '#9B111E'
-const MENSAJE_BIENVENIDA =
-  '¡Hola! Soy el asistente de Guachinche El Realejo. Pregúntame por la carta, horarios o disponibilidad. También puedo reservar mesa por ti (ej.: «Reserva a nombre de Samu, correo samuel@mail.com, para mañana a las 20:00»).'
 const RETRASO_RESPUESTA_MS = 600
-
-const PLATOS_ESTRELLA = [...menuData].sort((a, b) => b.precio - a.precio).slice(0, 3)
-const PLATOS_CARNES = menuData.filter((p) => p.categoria === 'carnes')
 
 function crearId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
@@ -56,10 +54,11 @@ function normalizarTexto(texto) {
 /* ── Rich Cards ──────────────────────────────────────────────────────────── */
 
 function CarruselPlatos({ platos }) {
+  const { t } = useTranslation()
   if (!platos.length) return null
 
   return (
-    <div className="chatbot-carousel" role="list" aria-label="Platos recomendados">
+    <div className="chatbot-carousel" role="list" aria-label={t('chatbot.dishesRecommended')}>
       {platos.map((plato) => (
         <article key={plato.id} className="chatbot-dish-card" role="listitem">
           <div className="chatbot-dish-card__media">
@@ -83,14 +82,16 @@ function CarruselPlatos({ platos }) {
 }
 
 function BotonIrReservas({ onClick, consulta = null }) {
+  const { t } = useTranslation()
   return (
     <button type="button" className="chatbot-rich-btn" onClick={() => onClick(consulta)}>
-      📅 Ir a Reservas
+      {t('chatbot.goReservations')}
     </button>
   )
 }
 
 function BotonAbrirMaps() {
+  const { t } = useTranslation()
   return (
     <a
       className="chatbot-rich-btn"
@@ -98,27 +99,28 @@ function BotonAbrirMaps() {
       target="_blank"
       rel="noopener noreferrer"
     >
-      📍 Abrir en Google Maps
+      {t('chatbot.openMaps')}
     </a>
   )
 }
 
 function TarjetaConfirmacionReserva({ localizador, nombre, fecha, turno }) {
+  const { t } = useTranslation()
   return (
     <div className="chatbot-booking-confirm">
-      <p className="chatbot-booking-confirm__badge">Reserva confirmada</p>
+      <p className="chatbot-booking-confirm__badge">{t('chatbot.bookingConfirmed')}</p>
       <p className="chatbot-booking-confirm__locator">{localizador}</p>
       <dl className="chatbot-booking-confirm__meta">
         <div>
-          <dt>Titular</dt>
+          <dt>{t('common.holder')}</dt>
           <dd>{nombre}</dd>
         </div>
         <div>
-          <dt>Fecha</dt>
+          <dt>{t('common.date')}</dt>
           <dd>{formatearFechaLegible(fecha)}</dd>
         </div>
         <div>
-          <dt>Turno</dt>
+          <dt>{t('common.shift')}</dt>
           <dd>{turno}</dd>
         </div>
       </dl>
@@ -127,10 +129,13 @@ function TarjetaConfirmacionReserva({ localizador, nombre, fecha, turno }) {
 }
 
 function TarjetaDisponibilidad({ consulta, resultado, onReservar }) {
+  const { t } = useTranslation()
   const resumen = describirEstadoDisponibilidad(resultado.estado, resultado.mesasLibres)
   const fechaTexto = formatearFechaLegible(consulta.fecha)
   const turnoTexto = etiquetaTurno(consulta.turno)
-  const horaTexto = consulta.hora ? ` a las ${formatearHora(consulta.hora.horas, consulta.hora.minutos)}` : ''
+  const horaTexto = consulta.hora
+    ? t('common.atTime', { time: formatearHora(consulta.hora.horas, consulta.hora.minutos) })
+    : ''
 
   return (
     <div className={`chatbot-availability chatbot-availability--${resumen.tono}`}>
@@ -138,24 +143,24 @@ function TarjetaDisponibilidad({ consulta, resultado, onReservar }) {
       <p className="chatbot-availability__detalle">{resumen.detalle}</p>
       <dl className="chatbot-availability__meta">
         <div>
-          <dt>Fecha</dt>
+          <dt>{t('common.date')}</dt>
           <dd>{fechaTexto}</dd>
         </div>
         <div>
-          <dt>Turno</dt>
+          <dt>{t('common.shift')}</dt>
           <dd>
             {turnoTexto}
             {horaTexto}
           </dd>
         </div>
         <div>
-          <dt>Libres</dt>
+          <dt>{t('common.free')}</dt>
           <dd>{resultado.mesasLibres}</dd>
         </div>
       </dl>
       {resultado.estado !== 'completo' && (
         <button type="button" className="chatbot-rich-btn" onClick={() => onReservar(consulta)}>
-          📅 Reservar ahora
+          {t('chatbot.bookNow')}
         </button>
       )}
     </div>
@@ -163,13 +168,26 @@ function TarjetaDisponibilidad({ consulta, resultado, onReservar }) {
 }
 
 function TablaHorarios() {
+  const { t } = useTranslation()
   const abiertoGlobal = comprobarApertura()
   const almuerzoActivo = turnoActivo('almuerzo')
   const cenaActivo = turnoActivo('cena')
 
   const filas = [
-    { id: 'almuerzo', emoji: '🍽️', nombre: 'Almuerzo', horario: '12:00 – 16:00', activo: almuerzoActivo },
-    { id: 'cena', emoji: '🌙', nombre: 'Cena', horario: '19:30 – 23:00', activo: cenaActivo },
+    {
+      id: 'almuerzo',
+      emoji: '🍽️',
+      nombre: t('common.lunch'),
+      horario: t('common.lunchHours'),
+      activo: almuerzoActivo,
+    },
+    {
+      id: 'cena',
+      emoji: '🌙',
+      nombre: t('common.dinner'),
+      horario: t('common.dinnerHours'),
+      activo: cenaActivo,
+    },
   ]
 
   return (
@@ -188,15 +206,15 @@ function TablaHorarios() {
           }}
           aria-hidden="true"
         />
-        <span>{abiertoGlobal ? 'Abierto ahora' : 'Cerrado en este momento'}</span>
+        <span>{abiertoGlobal ? t('chatbot.scheduleOpen') : t('chatbot.scheduleClosed')}</span>
       </div>
 
       <table className="chatbot-schedule__table">
         <thead>
           <tr>
-            <th scope="col">Turno</th>
-            <th scope="col">Horario</th>
-            <th scope="col">Estado</th>
+            <th scope="col">{t('chatbot.scheduleTitle')}</th>
+            <th scope="col">{t('chatbot.scheduleHours')}</th>
+            <th scope="col">{t('chatbot.scheduleStatus')}</th>
           </tr>
         </thead>
         <tbody>
@@ -219,14 +237,14 @@ function TablaHorarios() {
                     style={{ backgroundColor: fila.activo ? '#22c55e' : '#525252' }}
                     aria-hidden="true"
                   />
-                  {fila.activo ? 'En servicio' : 'Fuera de hora'}
+                  {fila.activo ? t('common.inService') : t('common.offHours')}
                 </span>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      <p className="chatbot-schedule__note">Cerramos lunes y martes.</p>
+      <p className="chatbot-schedule__note">{t('common.closedMonTue')}</p>
     </div>
   )
 }
@@ -239,7 +257,7 @@ async function resolverSolicitudReserva(textoUsuario, { irReservas }) {
 
   if (solicitud.error === 'cerrado') {
     return {
-      text: `El ${formatearFechaLegible(solicitud.fecha)} cerramos por descanso semanal (lunes y martes).`,
+      text: i18n.t('chatbot.closedDay', { date: formatearFechaLegible(solicitud.fecha) }),
       component: <BotonIrReservas onClick={irReservas} />,
     }
   }
@@ -247,7 +265,7 @@ async function resolverSolicitudReserva(textoUsuario, { irReservas }) {
   if (!solicitud.completo) {
     const faltantes = solicitud.faltan.join(', ')
     return {
-      text: `Para completar la reserva necesito: ${faltantes}. Ejemplo: «Reserva a nombre de Ana, correo ana@mail.com, para mañana a las 20:00».`,
+      text: i18n.t('chatbot.needFields', { fields: faltantes }),
       component: <BotonIrReservas onClick={irReservas} />,
     }
   }
@@ -257,7 +275,10 @@ async function resolverSolicitudReserva(textoUsuario, { irReservas }) {
 
     if (disponibilidad.estado === 'completo') {
       return {
-        text: `Lo siento, el turno de ${etiquetaTurno(solicitud.turno)} ${formatearFechaLegible(solicitud.fecha)} está completo.`,
+        text: i18n.t('chatbot.shiftFull', {
+          shift: etiquetaTurno(solicitud.turno),
+          date: formatearFechaLegible(solicitud.fecha),
+        }),
         component: (
           <BotonIrReservas
             onClick={irReservas}
@@ -268,13 +289,22 @@ async function resolverSolicitudReserva(textoUsuario, { irReservas }) {
     }
 
     const resultado = await ejecutarReservaDesdeChat(solicitud)
-    const turnoTexto = solicitud.turno === 'almuerzo' ? 'Almuerzo' : 'Cena'
+    const turnoTexto =
+      solicitud.turno === 'almuerzo' ? i18n.t('common.lunch') : i18n.t('common.dinner')
     const horaTexto = solicitud.hora
-      ? ` a las ${formatearHora(solicitud.hora.horas, solicitud.hora.minutos)}`
+      ? i18n.t('common.atTime', {
+          time: formatearHora(solicitud.hora.horas, solicitud.hora.minutos),
+        })
       : ''
 
     return {
-      text: `¡Listo! Reserva confirmada a nombre de ${solicitud.nombre} para ${formatearFechaLegible(solicitud.fecha)} (${turnoTexto}${horaTexto}). Te hemos enviado el localizador a ${solicitud.email}.`,
+      text: i18n.t('chatbot.bookingOk', {
+        name: solicitud.nombre,
+        date: formatearFechaLegible(solicitud.fecha),
+        shift: turnoTexto,
+        time: horaTexto,
+        email: solicitud.email,
+      }),
       component: (
         <TarjetaConfirmacionReserva
           localizador={resultado.localizador}
@@ -288,8 +318,8 @@ async function resolverSolicitudReserva(textoUsuario, { irReservas }) {
     return {
       text:
         error.name === 'AbortError'
-          ? 'La reserva tardó demasiado. Inténtalo de nuevo o usa la página de reservas.'
-          : error.message || 'No pude registrar la reserva ahora mismo.',
+          ? i18n.t('chatbot.bookingTimeout')
+          : error.message || i18n.t('chatbot.bookingError'),
       component: (
         <BotonIrReservas
           onClick={irReservas}
@@ -306,7 +336,7 @@ async function resolverConsultaDisponibilidad(textoUsuario, { irReservas }) {
 
   if (esDiaCerrado(consulta.fecha)) {
     return {
-      text: `El ${formatearFechaLegible(consulta.fecha)} cerramos por descanso semanal. ${'Cerramos lunes y martes.'}`,
+      text: i18n.t('chatbot.availClosed', { date: formatearFechaLegible(consulta.fecha) }),
       component: <BotonIrReservas onClick={irReservas} />,
     }
   }
@@ -326,13 +356,21 @@ async function resolverConsultaDisponibilidad(textoUsuario, { irReservas }) {
       const consultaConTurno = { ...consulta, turno }
       const fechaTexto = formatearFechaLegible(consulta.fecha)
       const horaTexto = consulta.hora
-        ? ` a las ${formatearHora(consulta.hora.horas, consulta.hora.minutos)}`
+        ? i18n.t('common.atTime', {
+            time: formatearHora(consulta.hora.horas, consulta.hora.minutos),
+          })
         : ''
       const aviso = consulta.avisoHorario ? ` ${consulta.avisoHorario}` : ''
       const resumen = describirEstadoDisponibilidad(datos.estado, datos.mesasLibres)
 
       return {
-        text: `Para el turno de ${etiquetaTurno(turno)} ${fechaTexto}${horaTexto}: ${resumen.detalle.toLowerCase()}${aviso}`,
+        text: i18n.t('chatbot.availSingle', {
+          shift: etiquetaTurno(turno),
+          date: fechaTexto,
+          time: horaTexto,
+          detail: resumen.detalle.toLowerCase(),
+          warning: aviso,
+        }),
         component: (
           <TarjetaDisponibilidad
             consulta={consultaConTurno}
@@ -352,7 +390,7 @@ async function resolverConsultaDisponibilidad(textoUsuario, { irReservas }) {
       resultados.find(({ datos }) => datos.estado !== 'completo')?.turno ?? null
 
     return {
-      text: `Disponibilidad para ${formatearFechaLegible(consulta.fecha)}:\n${lineas.join('\n')}`,
+      text: `${i18n.t('chatbot.availMulti', { date: formatearFechaLegible(consulta.fecha) })}\n${lineas.join('\n')}`,
       component: turnoRecomendado ? (
         <TarjetaDisponibilidad
           consulta={{ ...consulta, turno: turnoRecomendado }}
@@ -367,8 +405,8 @@ async function resolverConsultaDisponibilidad(textoUsuario, { irReservas }) {
     return {
       text:
         error.message === 'Failed to fetch'
-          ? 'No pude consultar el aforo en este momento. Puedes comprobarlo directamente en la página de reservas.'
-          : error.message || 'No pude consultar la disponibilidad ahora mismo.',
+          ? i18n.t('chatbot.availFetchError')
+          : error.message || i18n.t('chatbot.availError'),
       component: <BotonIrReservas onClick={irReservas} />,
     }
   }
@@ -378,51 +416,109 @@ function resolverRespuesta(textoUsuario, { irReservas }) {
   const texto = normalizarTexto(textoUsuario)
   const incluye = (...palabras) => palabras.some((p) => texto.includes(p))
 
-  if (incluye('ubicacion', 'ubicación', 'direccion', 'dirección', 'donde', 'mapa', 'llegar', 'como llegar')) {
+  if (
+    incluye(
+      'ubicacion',
+      'ubicación',
+      'direccion',
+      'dirección',
+      'donde',
+      'mapa',
+      'llegar',
+      'como llegar',
+      'location',
+      'address',
+      'where',
+      'adresse',
+      'standort',
+      'adresse',
+    )
+  ) {
     return {
-      text: `Estamos en ${UBICACION_RESTAURANTE.calle}, ${UBICACION_RESTAURANTE.localidad}.`,
+      text: i18n.t('chatbot.location', {
+        street: UBICACION_RESTAURANTE.calle,
+        city: UBICACION_RESTAURANTE.localidad,
+      }),
       component: <BotonAbrirMaps />,
     }
   }
 
-  if (incluye('horario', 'abierto', 'cierra', 'abre') && !incluye('disponibilidad', 'disponible', 'mesa')) {
+  if (
+    incluye('horario', 'abierto', 'cierra', 'abre', 'hours', 'open', 'close', 'horaires', 'offnungszeiten', 'geoffnet') &&
+    !incluye('disponibilidad', 'disponible', 'mesa', 'availability', 'table', 'disponibilite', 'verfugbar')
+  ) {
     return {
-      text: 'Estos son nuestros turnos de cocina y servicio en sala:',
+      text: i18n.t('chatbot.hoursIntro'),
       component: <TablaHorarios />,
     }
   }
 
-  if (incluye('reserva', 'reservar', 'mesa', 'apartar', 'turno', 'booking') && !esSolicitudCrearReserva(textoUsuario)) {
+  if (
+    incluye(
+      'reserva',
+      'reservar',
+      'mesa',
+      'apartar',
+      'turno',
+      'booking',
+      'book',
+      'reserve',
+      'reserver',
+      'reservierung',
+      'tisch',
+    ) &&
+    !esSolicitudCrearReserva(textoUsuario)
+  ) {
     return {
-      text: `Perfecto. Disponemos de ${CONFIG_RESTAURANTE.TOTAL_MESAS_MAX} mesas por turno. Pulsa el botón para gestionar tu reserva:`,
+      text: i18n.t('chatbot.reservationsIntro', { max: CONFIG_RESTAURANTE.TOTAL_MESAS_MAX }),
       component: <BotonIrReservas onClick={irReservas} />,
     }
   }
 
-  if (incluye('carne', 'costillas', 'fiesta', 'cerdo', 'carnes')) {
+  const cartaTraducida = traducirCarta(menuData)
+  const platosCarnes = cartaTraducida.filter((p) => p.categoria === 'carnes')
+  const platosEstrella = [...cartaTraducida].sort((a, b) => b.precio - a.precio).slice(0, 3)
+
+  if (incluye('carne', 'costillas', 'fiesta', 'cerdo', 'carnes', 'meat', 'pork', 'viande')) {
     return {
-      text: 'Nuestras carnes son el corazón del guachinche. Échales un vistazo:',
-      component: <CarruselPlatos platos={PLATOS_CARNES} />,
+      text: i18n.t('chatbot.meatsIntro'),
+      component: <CarruselPlatos platos={platosCarnes} />,
     }
   }
 
-  if (incluye('carta', 'menu', 'comer', 'platos', 'plato', 'entrante', 'precio', 'comida')) {
+  if (
+    incluye(
+      'carta',
+      'menu',
+      'comer',
+      'platos',
+      'plato',
+      'entrante',
+      'precio',
+      'comida',
+      'food',
+      'dish',
+      'carte',
+      'speisekarte',
+      'gericht',
+    )
+  ) {
     return {
-      text: 'Te dejo algunos de nuestros platos más solicitados de la carta:',
-      component: <CarruselPlatos platos={PLATOS_ESTRELLA} />,
+      text: i18n.t('chatbot.menuIntro'),
+      component: <CarruselPlatos platos={platosEstrella} />,
     }
   }
 
-  if (incluye('postre', 'dulce', 'polvito')) {
-    const postres = menuData.filter((p) => p.categoria === 'postres')
+  if (incluye('postre', 'dulce', 'polvito', 'dessert', 'sweet', 'dessert', 'nachtisch')) {
+    const postres = cartaTraducida.filter((p) => p.categoria === 'postres')
     return {
-      text: 'Para rematar la experiencia, nuestro postre estrella:',
-      component: <CarruselPlatos platos={postres.length ? postres : menuData.slice(-1)} />,
+      text: i18n.t('chatbot.dessertIntro'),
+      component: <CarruselPlatos platos={postres.length ? postres : cartaTraducida.slice(-1)} />,
     }
   }
 
   return {
-    text: 'Puedo ayudarte con la carta, horarios, disponibilidad o reservar mesa. Prueba: «¿hay mesa hoy a las 20:00?» o «Reserva a nombre de Samu, correo samuel@mail.com, para mañana».',
+    text: i18n.t('chatbot.fallback'),
     component: null,
   }
 }
@@ -489,16 +585,26 @@ function BurbujaMensaje({ mensaje }) {
  * @param {{ setPaginaActual?: (pagina: string) => void, abierto: boolean, setAbierto: (v: boolean) => void }} props
  */
 export default function Chatbot({ setPaginaActual, abierto, setAbierto }) {
-  const [mensajes, setMensajes] = useState([
+  const { t, i18n: i18nInstance } = useTranslation()
+  const [mensajes, setMensajes] = useState(() => [
     {
       id: 'bienvenida',
       sender: 'bot',
-      text: MENSAJE_BIENVENIDA,
+      text: i18n.t('chatbot.welcome'),
       component: null,
     },
   ])
   const [entrada, setEntrada] = useState('')
   const [escribiendo, setEscribiendo] = useState(false)
+
+  useEffect(() => {
+    setMensajes((prev) => {
+      if (prev.length === 1 && prev[0].id === 'bienvenida') {
+        return [{ ...prev[0], text: t('chatbot.welcome') }]
+      }
+      return prev
+    })
+  }, [i18nInstance.language, t])
 
   const finRef = useRef(null)
 
@@ -576,18 +682,18 @@ export default function Chatbot({ setPaginaActual, abierto, setAbierto }) {
         id="chatbot-panel"
         className="chatbot-panel chatbot-panel--open"
         role="dialog"
-        aria-label="Asistente El Realejo"
+        aria-label={t('chatbot.title')}
         aria-modal="true"
       >
         <header className="chatbot-panel__header">
           <div>
-            <h2 className="chatbot-panel__title">Asistente El Realejo</h2>
-            <p className="chatbot-panel__subtitle">Guachinche · Tenerife</p>
+            <h2 className="chatbot-panel__title">{t('chatbot.title')}</h2>
+            <p className="chatbot-panel__subtitle">{t('chatbot.subtitle')}</p>
           </div>
           <button
             type="button"
             className="chatbot-panel__minimize"
-            aria-label="Minimizar chat"
+            aria-label={t('chatbot.minimize')}
             onClick={() => setAbierto(false)}
           >
             −
@@ -602,9 +708,9 @@ export default function Chatbot({ setPaginaActual, abierto, setAbierto }) {
           {escribiendo && (
             <div
               className="chatbot-typing chatbot-typing--enter"
-              aria-label="El asistente está escribiendo"
+              aria-label={t('chatbot.typing')}
             >
-              <span>Escribiendo</span>
+              <span>{t('chatbot.typingShort')}</span>
               <span className="chatbot-typing__dots" aria-hidden="true">
                 <span />
                 <span />
@@ -620,18 +726,18 @@ export default function Chatbot({ setPaginaActual, abierto, setAbierto }) {
           <input
             type="text"
             className="chatbot-input"
-            placeholder="Escribe tu consulta..."
+            placeholder={t('chatbot.inputPh')}
             value={entrada}
             onChange={(e) => setEntrada(e.target.value)}
             disabled={escribiendo}
             autoComplete="off"
-            aria-label="Mensaje para el asistente"
+            aria-label={t('chatbot.inputLabel')}
           />
           <button
             type="submit"
             className="chatbot-send"
             disabled={!entrada.trim() || escribiendo}
-            aria-label="Enviar mensaje"
+            aria-label={t('chatbot.send')}
           >
             <IconoEnviar />
           </button>

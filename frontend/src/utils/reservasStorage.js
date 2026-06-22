@@ -5,6 +5,7 @@
  * de modo que las reservas sobreviven a recargas de página.
  */
 
+import i18n from '../i18n'
 import {
   CONFIG_RESTAURANTE,
   claveReserva,
@@ -127,9 +128,7 @@ export function crearReservaLocal({ nombre, email, fecha, turno }) {
   const aforo = cargarAforoDesdeStorage()
 
   if (!hayDisponibilidadEnStorage(aforo, fecha, turno)) {
-    throw new Error(
-      '⚫ Aforo completo de 30 mesas. Por favor, selecciona otra fecha o turno.',
-    )
+    throw new Error(i18n.t('disponibilidad.aforoFull'))
   }
 
   const nuevoAforo = registrarMesaEnStorage(aforo, fecha, turno)

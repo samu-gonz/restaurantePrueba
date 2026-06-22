@@ -1,0 +1,287 @@
+{
+  "common": {
+    "skipToContent": "Saltar al contenido",
+    "open": "Abierto Ahora",
+    "closed": "Cerrado (Abre 12:00 / 19:30)",
+    "lunch": "Almuerzo",
+    "dinner": "Cena",
+    "lunchHours": "12:00 – 16:00",
+    "dinnerHours": "19:30 – 23:00",
+    "lunchFull": "Almuerzo (12:00 – 16:00)",
+    "dinnerFull": "Cena (19:30 – 23:00)",
+    "shiftFull": " - Completo",
+    "today": "hoy",
+    "tomorrow": "mañana",
+    "inService": "En servicio",
+    "offHours": "Fuera de hora",
+    "closedMonTue": "Cerramos lunes y martes.",
+    "tables": "mesas",
+    "table": "mesa",
+    "reservation": "reserva",
+    "reservations": "reservas",
+    "loading": "Cargando…",
+    "updating": "Actualizando…",
+    "refresh": "Actualizar",
+    "email": "Email",
+    "name": "Nombre",
+    "date": "Fecha",
+    "shift": "Turno",
+    "locator": "Localizador",
+    "holder": "Titular",
+    "free": "Libres",
+    "atTime": " a las {{time}}"
+  },
+  "lang": {
+    "label": "Idioma",
+    "es": "Español",
+    "en": "English",
+    "fr": "Français",
+    "de": "Deutsch"
+  },
+  "nav": {
+    "main": "Navegación principal",
+    "home": "Inicio",
+    "menu": "Carta",
+    "location": "Ubicación",
+    "bookTable": "Reservar Mesa",
+    "assistant": "Asistente virtual",
+    "openMenu": "Abrir menú",
+    "closeMenu": "Cerrar menú",
+    "menuTitle": "Menú",
+    "sections": "Secciones del sitio",
+    "openChat": "Abrir asistente virtual",
+    "closeChat": "Cerrar asistente virtual",
+    "admin": "Gestión de reservas"
+  },
+  "footer": {
+    "tagline": "Cocina canaria y vino de la casa.",
+    "staffAccess": "Acceso personal"
+  },
+  "home": {
+    "carouselLabel": "Galería visual del guachinche",
+    "carouselSelect": "Seleccionar imagen del carrusel",
+    "carouselView": "Ver imagen {{n}}: {{alt}}",
+    "carouselCaption": "Nuestro espacio",
+    "heroTitle1": "Sabor de la tierra.",
+    "heroTitle2": "Tradición canaria.",
+    "heroSubtitle": "Producto fresco de temporada, vino de nuestra cosecha y cocina hecha con pasión en el corazón vitivinícola de Los Realejos.",
+    "exploreMenu": "Explorar Carta",
+    "bookTable": "Asegurar Mesa",
+    "locationSection": "Información del local y contacto",
+    "ourLocation": "Nuestra Ubicación",
+    "wineTitle": "Vino de Cosecha",
+    "locationBody": "En La Cruz Santa, entre viñedos y valle, cocinamos cada día con ingredientes de proximidad y el carácter de un guachinche auténtico del norte de Tenerife.",
+    "wineBody": "Listán Negro y blanco afrutado de nuestras barricas, servidos en jarra para acompañar guisos, carnes y pescados del día.",
+    "mapOf": "Mapa de {{name}}",
+    "openMaps": "Abrir en Google Maps",
+    "menuToday": "La Carta de Hoy",
+    "filterCategory": "Filtrar por categoría",
+    "allergens": "Alérgenos: {{list}}",
+    "noAllergens": "Sin alérgenos declarados",
+    "noDishes": "No hay platos en esta categoría.",
+    "carousel": {
+      "1": { "alt": "Barricas de vino y bodega familiar en el norte de Tenerife" },
+      "2": { "alt": "Carnes y guisos caseros cocinados a fuego lento" },
+      "3": { "alt": "Viñedos y valles de La Cruz Santa al atardecer" },
+      "4": { "alt": "Mesa servida con vino de la casa y producto de temporada" }
+    }
+  },
+  "categories": {
+    "all": "Todos",
+    "entrantes": "Entrantes",
+    "carnes": "Carnes",
+    "pescados": "Pescados",
+    "postres": "Postres"
+  },
+  "reservas": {
+    "title": "Reserva tu Mesa",
+    "subtitle": "Máximo {{max}} mesas por turno. Confirma tu visita en segundos y recibe tu localizador al instante.",
+    "confirmed": "¡Reserva Confirmada!",
+    "thanks": "Gracias, <strong>{{name}}</strong>. Tu mesa queda registrada para el turno de {{shift}}.",
+    "emailSent": "Confirmación enviada a: <strong>{{email}}</strong>",
+    "emailLocal": "Reserva registrada correctamente. Email: <strong>{{email}}</strong>",
+    "locatorLabel": "LOCALIZADOR: {{code}}",
+    "tablesLeft": "Mesas libres restantes en ese turno: {{count}}",
+    "newReservation": "Nueva reserva",
+    "backHome": "Volver al inicio",
+    "clientName": "Nombre del cliente",
+    "clientNamePh": "Tu nombre completo",
+    "email": "Correo electrónico",
+    "emailPh": "tuemail@dominio.com",
+    "visitDate": "Fecha",
+    "visitShift": "Turno",
+    "confirming": "Confirmando reserva...",
+    "confirm": "Confirmar reserva",
+    "closedDay": "🍷 Cerramos los lunes y martes por mantenimiento de viñedos y descanso del personal. Elige otro día.",
+    "bothFull": "⚫ No quedan mesas en ningún turno para esta fecha. Elige otra fecha.",
+    "statusHigh": "🟢 Excelente elección. Disponibilidad alta ({{count}} mesas libres)",
+    "statusLow": "🟠 ¡Date prisa! Quedan muy pocas mesas para este turno ({{count}} mesas libres)",
+    "statusFull": "⚫ Aforo completo de 30 mesas. Por favor, selecciona otra fecha o turno.",
+    "tablesAvailable": "Mesas disponibles: <strong>{{free}}</strong> de {{max}}",
+    "invalidEmail": "Correo electrónico inválido. Revisa el formato e inténtalo de nuevo.",
+    "noAforo": "No se pudo consultar el aforo en tiempo real.",
+    "noServer": "No hay conexión con el servidor. Configura VITE_API_URL en Vercel o usa la web en local.",
+    "noAvailability": "No pudimos consultar disponibilidad en este momento.",
+    "bookingFailed": "No pudimos completar la reserva. Inténtalo de nuevo.",
+    "timeout": "La solicitud tardó demasiado. Si recibiste el localizador, tu reserva está confirmada; si no, inténtalo de nuevo.",
+    "connectionFailed": "No pudimos conectar con el servidor en este momento. Comprueba tu conexión e inténtalo de nuevo."
+  },
+  "admin": {
+    "loginTitle": "Acceso al personal",
+    "loginSubtitle": "Introduce tus credenciales para consultar las reservas del restaurante.",
+    "user": "Usuario",
+    "password": "Contraseña",
+    "verifying": "Verificando…",
+    "enter": "Entrar",
+    "loginFailed": "No se pudo iniciar sesión.",
+    "wrongCredentials": "Usuario o contraseña incorrectos.",
+    "title": "Gestión de reservas",
+    "subtitleMysql": "Reservas guardadas en base de datos MySQL.",
+    "subtitleServer": "Reservas guardadas en el servidor.",
+    "subtitleLocal": "Reservas guardadas en este navegador.",
+    "subtitleDefault": "Listado de reservas del restaurante.",
+    "logout": "Cerrar sesión",
+    "totalReservations": "Total de reservas",
+    "daysWithReservations": "Días con reservas",
+    "filterDay": "Filtrar por día",
+    "clearFilter": "Ver todos los días",
+    "waking": "El servidor está despertando. Reintentando…",
+    "timeoutCache": "El servidor tardó demasiado. Mostrando reservas guardadas en este dispositivo.",
+    "offlineCache": "Sin conexión con el servidor. Mostrando reservas de este navegador.",
+    "timeoutError": "El servidor tardó demasiado. Intenta de nuevo en unos segundos.",
+    "connectionError": "Error de conexión con el servidor.",
+    "loading": "Cargando reservas…",
+    "empty": "Aún no hay reservas registradas.",
+    "dayCount": "{{count}} reserva",
+    "dayCount_plural": "{{count}} reservas"
+  },
+  "chatbot": {
+    "welcome": "¡Hola! Soy el asistente de Guachinche El Realejo. Pregúntame por la carta, horarios o disponibilidad. También puedo reservar mesa por ti (ej.: «Reserva a nombre de Samu, correo samuel@mail.com, para mañana a las 20:00»).",
+    "title": "Asistente El Realejo",
+    "subtitle": "Guachinche · Tenerife",
+    "minimize": "Minimizar chat",
+    "typing": "El asistente está escribiendo",
+    "typingShort": "Escribiendo",
+    "inputPh": "Escribe tu consulta...",
+    "inputLabel": "Mensaje para el asistente",
+    "send": "Enviar mensaje",
+    "dishesRecommended": "Platos recomendados",
+    "goReservations": "📅 Ir a Reservas",
+    "openMaps": "📍 Abrir en Google Maps",
+    "bookNow": "📅 Reservar ahora",
+    "bookingConfirmed": "Reserva confirmada",
+    "scheduleOpen": "Abierto ahora",
+    "scheduleClosed": "Cerrado en este momento",
+    "scheduleTitle": "Turno",
+    "scheduleHours": "Horario",
+    "scheduleStatus": "Estado",
+    "closedDay": "El {{date}} cerramos por descanso semanal (lunes y martes).",
+    "needFields": "Para completar la reserva necesito: {{fields}}. Ejemplo: «Reserva a nombre de Ana, correo ana@mail.com, para mañana a las 20:00».",
+    "shiftFull": "Lo siento, el turno de {{shift}} {{date}} está completo.",
+    "bookingOk": "¡Listo! Reserva confirmada a nombre de {{name}} para {{date}} ({{shift}}{{time}}). Te hemos enviado el localizador a {{email}}.",
+    "bookingTimeout": "La reserva tardó demasiado. Inténtalo de nuevo o usa la página de reservas.",
+    "bookingError": "No pude registrar la reserva ahora mismo.",
+    "availClosed": "El {{date}} cerramos por descanso semanal. Cerramos lunes y martes.",
+    "availSingle": "Para el turno de {{shift}} {{date}}{{time}}: {{detail}}{{warning}}",
+    "availMulti": "Disponibilidad para {{date}}:",
+    "availFetchError": "No pude consultar el aforo en este momento. Puedes comprobarlo directamente en la página de reservas.",
+    "availError": "No pude consultar la disponibilidad ahora mismo.",
+    "location": "Estamos en {{street}}, {{city}}.",
+    "hoursIntro": "Estos son nuestros turnos de cocina y servicio en sala:",
+    "reservationsIntro": "Perfecto. Disponemos de {{max}} mesas por turno. Pulsa el botón para gestionar tu reserva:",
+    "meatsIntro": "Nuestras carnes son el corazón del guachinche. Échales un vistazo:",
+    "menuIntro": "Te dejo algunos de nuestros platos más solicitados de la carta:",
+    "dessertIntro": "Para rematar la experiencia, nuestro postre estrella:",
+    "fallback": "Puedo ayudarte con la carta, horarios, disponibilidad o reservar mesa. Prueba: «¿hay mesa hoy a las 20:00?» o «Reserva a nombre de Samu, correo samuel@mail.com, para mañana».",
+    "fieldName": "nombre",
+    "fieldEmail": "correo electrónico",
+    "fieldDate": "fecha"
+  },
+  "disponibilidad": {
+    "closedNotice": "Cerramos los lunes y martes por mantenimiento de viñedos y descanso del personal.",
+    "betweenShifts": "Esa hora está entre turnos; la cena abre a las 19:30.",
+    "lunchOpens": "El almuerzo abre a las 12:00.",
+    "outsideHours": "Ese horario queda fuera de nuestro servicio (cena hasta las 23:00).",
+    "noTables": "Sin mesas disponibles",
+    "fullDetail": "El turno está completo ({{max}} mesas reservadas).",
+    "lastSpots": "Últimas plazas",
+    "lastSpotsDetail": "Quedan solo {{count}} mesa libre.",
+    "lastSpotsDetail_plural": "Quedan solo {{count}} mesas libres.",
+    "available": "Hay disponibilidad",
+    "availableDetail": "Tenemos {{count}} mesa libre de {{max}}.",
+    "availableDetail_plural": "Tenemos {{count}} mesas libres de {{max}}.",
+    "aforoFull": "⚫ Aforo completo de 30 mesas. Por favor, selecciona otra fecha o turno."
+  },
+  "allergens": {
+    "Lácteos": "Lácteos",
+    "Huevo": "Huevo",
+    "Gluten": "Gluten",
+    "Pescado": "Pescado",
+    "Crustáceos": "Crustáceos",
+    "Moluscos": "Moluscos",
+    "Soja": "Soja",
+    "Frutos secos": "Frutos secos",
+    "Apio": "Apio",
+    "Mostaza": "Mostaza",
+    "Sésamo": "Sésamo",
+    "Sulfitos": "Sulfitos"
+  },
+  "menu": {
+    "1": {
+      "nombre": "Queso asado con mojos",
+      "descripcion": "Queso semicurado de cabra gratinado, acompañado de mojo picón y mojo verde caseros."
+    },
+    "2": {
+      "nombre": "Garbanzas compuestas",
+      "descripcion": "Garbanzos guisados con costilla, chorizo, morcilla y verduras de temporada."
+    },
+    "3": {
+      "nombre": "Croquetas caseras del día",
+      "descripcion": "Croquetas crujientes elaboradas cada mañana con relleno del día."
+    },
+    "4": {
+      "nombre": "Escaldón de gofio",
+      "descripcion": "Tradicional escaldón canario con caldo de pescado, cebolla y gofio tostado."
+    },
+    "5": {
+      "nombre": "Vino de la Casa 1L",
+      "descripcion": "Jarra de vino tinto o blanco de nuestra cosecha, servido bien frío."
+    },
+    "6": {
+      "nombre": "Costillas con papas y piña",
+      "descripcion": "Costillas de cerdo adobadas lentamente, con papas arrugadas y piña asada."
+    },
+    "7": {
+      "nombre": "Carne de fiesta",
+      "descripcion": "Trozos de cerdo salteados con comino, ajo y pimentón, estilo tradicional."
+    },
+    "8": {
+      "nombre": "Secreto ibérico a la brasa",
+      "descripcion": "Secreto ibérico jugoso marcado a la brasa, con guarnición de patatas."
+    },
+    "9": {
+      "nombre": "Pollo al salmorejo",
+      "descripcion": "Pollo marinado en salmorejo canario, asado y servido con papas."
+    },
+    "10": {
+      "nombre": "Bacalao encebollado",
+      "descripcion": "Bacalao confitado con cebolla pochada, pimentón y laurel."
+    },
+    "11": {
+      "nombre": "Cherne encebollado",
+      "descripcion": "Cherne fresco encebollado con patatas y mojo suave."
+    },
+    "12": {
+      "nombre": "Churros de pescado",
+      "descripcion": "Churros de pescado blanco crujientes con alioli y limón."
+    },
+    "13": {
+      "nombre": "Polvito uruguayo",
+      "descripcion": "Postre cremoso de galleta y nata, muy popular en Canarias."
+    },
+    "14": {
+      "nombre": "Quesillo canario",
+      "descripcion": "Flan canario con leche condensada, caramelo casero y ralladura de limón."
+    }
+  }
+}

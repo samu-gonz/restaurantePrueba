@@ -1,9 +1,42 @@
 import { API_BASE_URL, backendConfigurado } from '../config/api'
 import { CONFIG_RESTAURANTE } from '../data/db'
+import i18n, { localeFecha } from '../i18n'
 import { consultarDisponibilidadLocal } from './reservasStorage'
 
-const MSG_CIERRE =
-  'Cerramos los lunes y martes por mantenimiento de viñedos y descanso del personal.'
+const DIAS_SEMANA = {
+  domingo: 0,
+  lunes: 1,
+  martes: 2,
+  miercoles: 3,
+  jueves: 4,
+  viernes: 5,
+  sabado: 6,
+  sunday: 0,
+  monday: 1,
+  tuesday: 2,
+  wednesday: 3,
+  thursday: 4,
+  friday: 5,
+  saturday: 6,
+  dimanche: 0,
+  lundi: 1,
+  mardi: 2,
+  mercredi: 3,
+  jeudi: 4,
+  vendredi: 5,
+  samedi: 6,
+  sonntag: 0,
+  montag: 1,
+  dienstag: 2,
+  mittwoch: 3,
+  donnerstag: 4,
+  freitag: 5,
+  samstag: 6,
+}
+
+const PALABRAS_HOY = ['hoy', 'today', "aujourd'hui", 'aujourdhui', 'heute']
+const PALABRAS_MANANA = ['manana', 'mañana', 'tomorrow', 'demain', 'morgen']
+const PALABRAS_PASADO_MANANA = ['pasado manana', 'day after tomorrow', 'apres demain', 'übermorgen', 'ubermorgen']
 
 function normalizarTexto(texto) {
   return texto
@@ -16,14 +49,11 @@ function formatearFechaISO(fecha) {
   return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`
 }
 
-const DIAS_SEMANA = {
-  domingo: 0,
-  lunes: 1,
-  martes: 2,
-  miercoles: 3,
-  jueves: 4,
-  viernes: 5,
-  sabado: 6,
+function contienePalabra(texto, palabras) {
+  return palabras.some((p) => {
+    const n = normalizarTexto(p)
+    return new RegExp(`\\b${n}\\b`).test(texto)
+  })
 }
 
 function parsearDiaSemanaDesdeTexto(textoNormalizado) {
@@ -39,7 +69,7 @@ function parsearDiaSemanaDesdeTexto(textoNormalizado) {
   const diaActual = hoy.getDay()
   let diasHasta = (diaObjetivo - diaActual + 7) % 7
 
-  if (/\bproxim[oa]\b/.test(textoNormalizado) && diasHasta === 0) {
+  if (/\b(proxim[oa]|next|prochain|nächste|nachste)\b/.test(textoNormalizado) && diasHasta === 0) {
     diasHasta = 7
   }
 
@@ -50,9 +80,9 @@ function parsearDiaSemanaDesdeTexto(textoNormalizado) {
 
 function textoMencionaFecha(textoNormalizado) {
   return (
-    /\bhoy\b/.test(textoNormalizado) ||
-    /\bmanana\b/.test(textoNormalizado) ||
-    /\bpasado manana\b/.test(textoNormalizado) ||
+    contienePalabra(textoNormalizado, PALABRAS_HOY) ||
+    contienePalabra(textoNormalizado, PALABRAS_MANANA) ||
+    contienePalabra(textoNormalizado, PALABRAS_PASADO_MANANA) ||
     /\b(\d{1,2})[\/\-](\d{1,2})/.test(textoNormalizado) ||
     Object.keys(DIAS_SEMANA).some((nombre) => new RegExp(`\\b${nombre}\\b`).test(textoNormalizado))
   )
@@ -73,10 +103,10 @@ export function formatearFechaLegible(fechaISO) {
   const hoy = formatearFechaISO(new Date())
   const manana = formatearFechaISO(new Date(Date.now() + 86_400_000))
 
-  if (fechaISO === hoy) return 'hoy'
-  if (fechaISO === manana) return 'mañana'
+  if (fechaISO === hoy) return i18n.t('common.today')
+  if (fechaISO === manana) return i18n.t('common.tomorrow')
 
-  return fecha.toLocaleDateString('es-ES', {
+  return fecha.toLocaleDateString(localeFecha(), {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -140,13 +170,13 @@ export function parsearHoraDesdeTexto(texto) {
     }
   }
 
-  const soloHora = textoNormalizado.match(/\b(\d{1,2})\s*h(?:oras?)?\b/)
+  const soloHora = textoNormalizado.match(/\b(\d{1,2})\s*h(?:oras?|eure?)?\b/)
   if (soloHora) {
     return { horas: Number(soloHora[1]), minutos: 0 }
   }
 
   const aLas = textoNormalizado.match(
-    /a las (\d{1,2})(?::(\d{2}))?(?:\s*y\s*media)?(?:\s*de la (tarde|noche|manana))?/,
+    /(?:a las|at|a|um|à)\s*(\d{1,2})(?::(\d{2}))?(?:\s*y\s*media)?(?:\s*de la (tarde|noche|manana))?/,
   )
   if (aLas) {
     let horas = Number(aLas[1])
@@ -172,16 +202,16 @@ export function parsearFechaDesdeTexto(texto) {
   const textoNormalizado = normalizarTexto(texto)
   const referencia = new Date()
 
-  if (/\bhoy\b/.test(textoNormalizado)) {
+  if (contienePalabra(textoNormalizado, PALABRAS_HOY)) {
     return formatearFechaISO(referencia)
   }
 
-  if (/\bmanana\b/.test(textoNormalizado)) {
+  if (contienePalabra(textoNormalizado, PALABRAS_MANANA)) {
     referencia.setDate(referencia.getDate() + 1)
     return formatearFechaISO(referencia)
   }
 
-  if (/\bpasado manana\b/.test(textoNormalizado)) {
+  if (contienePalabra(textoNormalizado, PALABRAS_PASADO_MANANA)) {
     referencia.setDate(referencia.getDate() + 2)
     return formatearFechaISO(referencia)
   }
@@ -220,7 +250,7 @@ export function turnoDesdeHora(horas, minutos) {
     return {
       turno: 'cena',
       dentroHorario: false,
-      aviso: 'Esa hora está entre turnos; la cena abre a las 19:30.',
+      aviso: i18n.t('disponibilidad.betweenShifts'),
     }
   }
 
@@ -228,19 +258,19 @@ export function turnoDesdeHora(horas, minutos) {
     return {
       turno: 'almuerzo',
       dentroHorario: false,
-      aviso: 'El almuerzo abre a las 12:00.',
+      aviso: i18n.t('disponibilidad.lunchOpens'),
     }
   }
 
   return {
     turno: 'cena',
     dentroHorario: false,
-    aviso: 'Ese horario queda fuera de nuestro servicio (cena hasta las 23:00).',
+    aviso: i18n.t('disponibilidad.outsideHours'),
   }
 }
 
 export function etiquetaTurno(turno) {
-  return turno === 'almuerzo' ? 'almuerzo' : 'cena'
+  return turno === 'almuerzo' ? i18n.t('common.lunch') : i18n.t('common.dinner')
 }
 
 export function esConsultaDisponibilidad(texto) {
@@ -261,13 +291,27 @@ export function esConsultaDisponibilidad(texto) {
     'teneis mesa',
     'teneis sitio',
     'cupo',
+    'availability',
+    'available',
+    'free table',
+    'any table',
+    'tables left',
+    'disponibilite',
+    'disponible',
+    'table libre',
+    'verfugbar',
+    'verfügbar',
+    'freier tisch',
+    'tisch frei',
   ]
 
   return (
-    palabrasClave.some((palabra) => textoNormalizado.includes(palabra)) ||
+    palabrasClave.some((palabra) => textoNormalizado.includes(normalizarTexto(palabra))) ||
     /\bhay\s+(disponibilidad|lugar|mesa|sitio)/.test(textoNormalizado) ||
     /(?:queda|quedan)\s+(alguna\s+)?mesa/.test(textoNormalizado) ||
-    /(?:mesa|sitio)\s+para/.test(textoNormalizado)
+    /(?:mesa|sitio)\s+para/.test(textoNormalizado) ||
+    /\b(any|free)\s+table/.test(textoNormalizado) ||
+    /\b(table|place)\s+(available|free)/.test(textoNormalizado)
   )
 }
 
@@ -294,11 +338,22 @@ export function interpretarConsultaDisponibilidad(texto) {
     }
   }
 
-  if (textoNormalizado.includes('almuerzo') || textoNormalizado.includes('comida')) {
+  if (
+    textoNormalizado.includes('almuerzo') ||
+    textoNormalizado.includes('comida') ||
+    textoNormalizado.includes('lunch') ||
+    textoNormalizado.includes('dejeuner') ||
+    textoNormalizado.includes('mittagessen')
+  ) {
     return { fecha, turno: 'almuerzo', hora: null, dentroHorario: true, avisoHorario: null }
   }
 
-  if (textoNormalizado.includes('cena')) {
+  if (
+    textoNormalizado.includes('cena') ||
+    textoNormalizado.includes('dinner') ||
+    textoNormalizado.includes('diner') ||
+    textoNormalizado.includes('abendessen')
+  ) {
     return { fecha, turno: 'cena', hora: null, dentroHorario: true, avisoHorario: null }
   }
 
@@ -321,7 +376,7 @@ export async function obtenerDisponibilidadRemota(fecha, turno) {
 
   const data = await response.json().catch(() => ({}))
   if (!response.ok) {
-    throw new Error(data?.error || 'No se pudo consultar el aforo en tiempo real.')
+    throw new Error(data?.error || i18n.t('reservas.noAforo'))
   }
 
   return data
@@ -330,23 +385,26 @@ export async function obtenerDisponibilidadRemota(fecha, turno) {
 export function describirEstadoDisponibilidad(estado, mesasLibres) {
   if (estado === 'completo') {
     return {
-      titulo: 'Sin mesas disponibles',
-      detalle: `El turno está completo (${CONFIG_RESTAURANTE.TOTAL_MESAS_MAX} mesas reservadas).`,
+      titulo: i18n.t('disponibilidad.noTables'),
+      detalle: i18n.t('disponibilidad.fullDetail', { max: CONFIG_RESTAURANTE.TOTAL_MESAS_MAX }),
       tono: 'completo',
     }
   }
 
   if (estado === 'ultimas_plazas') {
     return {
-      titulo: 'Últimas plazas',
-      detalle: `Quedan solo ${mesasLibres} mesa${mesasLibres === 1 ? '' : 's'} libres.`,
+      titulo: i18n.t('disponibilidad.lastSpots'),
+      detalle: i18n.t('disponibilidad.lastSpotsDetail', { count: mesasLibres }),
       tono: 'ultimas',
     }
   }
 
   return {
-    titulo: 'Hay disponibilidad',
-    detalle: `Tenemos ${mesasLibres} mesa${mesasLibres === 1 ? '' : 's'} libres de ${CONFIG_RESTAURANTE.TOTAL_MESAS_MAX}.`,
+    titulo: i18n.t('disponibilidad.available'),
+    detalle: i18n.t('disponibilidad.availableDetail', {
+      count: mesasLibres,
+      max: CONFIG_RESTAURANTE.TOTAL_MESAS_MAX,
+    }),
     tono: 'disponible',
   }
 }

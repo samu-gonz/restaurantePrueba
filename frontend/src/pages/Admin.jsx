@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { API_BASE_URL, backendConfigurado } from '../config/api'
+import { localeFecha } from '../i18n'
 import {
   cabecerasAdminAutenticado,
   cerrarSesionAdmin,
@@ -21,7 +23,7 @@ function formatearDiaCabecera(fechaISO) {
   const [y, m, d] = String(fechaISO).split('-').map(Number)
   if (!y || !m || !d) return fechaISO
   const fecha = new Date(y, m - 1, d)
-  return fecha.toLocaleDateString('es-ES', {
+  return fecha.toLocaleDateString(localeFecha(), {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -29,8 +31,8 @@ function formatearDiaCabecera(fechaISO) {
   })
 }
 
-function formatearTurno(turno) {
-  return turno === 'almuerzo' ? 'Almuerzo' : 'Cena'
+function formatearTurno(turno, t) {
+  return turno === 'almuerzo' ? t('common.lunch') : t('common.dinner')
 }
 
 function valorOrdenTurno(turno) {
@@ -54,6 +56,7 @@ function agruparReservasPorDia(reservas) {
 }
 
 function FormularioLoginAdmin({ onAccesoCorrecto }) {
+  const { t } = useTranslation()
   const [usuario, setUsuario] = useState('admin')
   const [contrasena, setContrasena] = useState('')
   const [errorLogin, setErrorLogin] = useState('')
@@ -68,7 +71,7 @@ function FormularioLoginAdmin({ onAccesoCorrecto }) {
       await iniciarSesionAdmin(usuario, contrasena)
       onAccesoCorrecto()
     } catch (error) {
-      setErrorLogin(error.message || 'No se pudo iniciar sesión.')
+      setErrorLogin(error.message || t('admin.loginFailed'))
     } finally {
       setEnviando(false)
     }
@@ -78,15 +81,13 @@ function FormularioLoginAdmin({ onAccesoCorrecto }) {
     <section className="admin-page admin-login" aria-labelledby="admin-login-title">
       <div className="admin-login__card">
         <h1 id="admin-login-title" className="admin-page__title">
-          Acceso al personal
+          {t('admin.loginTitle')}
         </h1>
-        <p className="admin-page__subtitle">
-          Introduce tus credenciales para consultar las reservas del restaurante.
-        </p>
+        <p className="admin-page__subtitle">{t('admin.loginSubtitle')}</p>
 
         <form className="admin-login__form" onSubmit={manejarSubmit} noValidate>
           <div className="reservas-field">
-            <label htmlFor="admin-usuario">Usuario</label>
+            <label htmlFor="admin-usuario">{t('admin.user')}</label>
             <input
               id="admin-usuario"
               type="text"
@@ -99,7 +100,7 @@ function FormularioLoginAdmin({ onAccesoCorrecto }) {
           </div>
 
           <div className="reservas-field">
-            <label htmlFor="admin-contrasena">Contraseña</label>
+            <label htmlFor="admin-contrasena">{t('admin.password')}</label>
             <input
               id="admin-contrasena"
               type="password"
@@ -118,7 +119,7 @@ function FormularioLoginAdmin({ onAccesoCorrecto }) {
           )}
 
           <button type="submit" className="btn-premium btn--block" disabled={enviando}>
-            {enviando ? 'Verificando…' : 'Entrar'}
+            {enviando ? t('admin.verifying') : t('admin.enter')}
           </button>
         </form>
       </div>
@@ -127,14 +128,16 @@ function FormularioLoginAdmin({ onAccesoCorrecto }) {
 }
 
 function TablaReservasDia({ reservas }) {
+  const { t } = useTranslation()
+
   return (
     <table className="admin-table">
       <thead>
         <tr>
-          <th>Titular</th>
-          <th>Email</th>
-          <th>Turno</th>
-          <th>Localizador</th>
+          <th>{t('common.holder')}</th>
+          <th>{t('common.email')}</th>
+          <th>{t('common.shift')}</th>
+          <th>{t('common.locator')}</th>
         </tr>
       </thead>
       <tbody>
@@ -142,7 +145,7 @@ function TablaReservasDia({ reservas }) {
           <tr key={reserva.localizador ?? reserva.id}>
             <td>{reserva.nombre}</td>
             <td>{reserva.email ?? '—'}</td>
-            <td>{formatearTurno(reserva.turno)}</td>
+            <td>{formatearTurno(reserva.turno, t)}</td>
             <td>
               <span className="admin-table__locator">{reserva.localizador}</span>
             </td>
@@ -154,6 +157,7 @@ function TablaReservasDia({ reservas }) {
 }
 
 function PanelReservasAdmin({ onCerrarSesion }) {
+  const { t } = useTranslation()
   const [reservas, setReservas] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -210,7 +214,7 @@ function PanelReservasAdmin({ onCerrarSesion }) {
         setAlmacenamiento(data?.almacenamiento ?? '')
       } catch (err) {
         if (err.name === 'AbortError' && intento === 0) {
-          setAviso('El servidor está despertando. Reintentando…')
+          setAviso(t('admin.waking'))
           await intentarCarga(1)
           return
         }
@@ -224,17 +228,11 @@ function PanelReservasAdmin({ onCerrarSesion }) {
         if (cache.length > 0) {
           setFuente('local')
           setAviso(
-            err.name === 'AbortError'
-              ? 'El servidor tardó demasiado. Mostrando reservas guardadas en este dispositivo.'
-              : 'Sin conexión con el servidor. Mostrando reservas de este navegador.',
+            err.name === 'AbortError' ? t('admin.timeoutCache') : t('admin.offlineCache'),
           )
         } else {
           setFuente('')
-          setError(
-            err.name === 'AbortError'
-              ? 'El servidor tardó demasiado. Intenta de nuevo en unos segundos.'
-              : err.message || 'Error de conexión con el servidor.',
-          )
+          setError(err.name === 'AbortError' ? t('admin.timeoutError') : err.message || t('admin.connectionError'))
         }
       } finally {
         window.clearTimeout(timeoutId)
@@ -243,7 +241,7 @@ function PanelReservasAdmin({ onCerrarSesion }) {
 
     await intentarCarga(0)
     setLoading(false)
-  }, [filtroFecha, onCerrarSesion])
+  }, [filtroFecha, onCerrarSesion, t])
 
   useEffect(() => {
     cargarReservas()
@@ -256,18 +254,18 @@ function PanelReservasAdmin({ onCerrarSesion }) {
   const subtitulo =
     fuente === 'servidor'
       ? almacenamiento === 'mysql'
-        ? 'Reservas guardadas en base de datos MySQL.'
-        : 'Reservas guardadas en el servidor.'
+        ? t('admin.subtitleMysql')
+        : t('admin.subtitleServer')
       : fuente === 'local'
-        ? 'Reservas guardadas en este navegador.'
-        : 'Listado de reservas del restaurante.'
+        ? t('admin.subtitleLocal')
+        : t('admin.subtitleDefault')
 
   return (
     <section className="admin-page" aria-labelledby="admin-title">
       <div className="admin-page__header">
         <div>
           <h1 id="admin-title" className="admin-page__title">
-            Gestión de reservas
+            {t('admin.title')}
           </h1>
           <p className="admin-page__subtitle">{subtitulo}</p>
         </div>
@@ -278,32 +276,32 @@ function PanelReservasAdmin({ onCerrarSesion }) {
             onClick={cargarReservas}
             disabled={loading}
           >
-            {loading ? 'Actualizando…' : 'Actualizar'}
+            {loading ? t('admin.updating') : t('admin.refresh')}
           </button>
           <button
             type="button"
             className="btn-premium btn-premium--outline admin-refresh-btn"
             onClick={onCerrarSesion}
           >
-            Cerrar sesión
+            {t('admin.logout')}
           </button>
         </div>
       </div>
 
       <div className="admin-summary-grid">
         <div className="admin-summary-card">
-          <p className="admin-summary-card__label">Total de reservas</p>
+          <p className="admin-summary-card__label">{t('admin.totalReservations')}</p>
           <p className="admin-summary-card__value">{totalReservas}</p>
         </div>
         <div className="admin-summary-card">
-          <p className="admin-summary-card__label">Días con reservas</p>
+          <p className="admin-summary-card__label">{t('admin.daysWithReservations')}</p>
           <p className="admin-summary-card__value">{totalDias}</p>
         </div>
       </div>
 
       <div className="admin-filters">
         <div className="reservas-field admin-filters__field">
-          <label htmlFor="admin-filtro-fecha">Filtrar por día</label>
+          <label htmlFor="admin-filtro-fecha">{t('admin.filterDay')}</label>
           <input
             id="admin-filtro-fecha"
             type="date"
@@ -319,7 +317,7 @@ function PanelReservasAdmin({ onCerrarSesion }) {
             onClick={() => setFiltroFecha('')}
             disabled={loading}
           >
-            Ver todos los días
+            {t('admin.clearFilter')}
           </button>
         )}
       </div>
@@ -332,7 +330,7 @@ function PanelReservasAdmin({ onCerrarSesion }) {
 
       {loading ? (
         <div className="admin-loading-card">
-          <p className="text-muted">Cargando reservas…</p>
+          <p className="text-muted">{t('admin.loading')}</p>
         </div>
       ) : error ? (
         <div className="reservas-alert" role="alert">
@@ -340,7 +338,7 @@ function PanelReservasAdmin({ onCerrarSesion }) {
         </div>
       ) : reservasPorDia.length === 0 ? (
         <div className="admin-loading-card">
-          <p className="text-muted">Aún no hay reservas registradas.</p>
+          <p className="text-muted">{t('admin.empty')}</p>
         </div>
       ) : (
         <div className="admin-day-list">
@@ -352,7 +350,7 @@ function PanelReservasAdmin({ onCerrarSesion }) {
                   <p className="admin-day-section__meta">{formatearFecha(fecha)}</p>
                 </div>
                 <span className="admin-day-section__count">
-                  {reservasDelDia.length} reserva{reservasDelDia.length === 1 ? '' : 's'}
+                  {t('admin.dayCount', { count: reservasDelDia.length })}
                 </span>
               </header>
               <div className="admin-table-card admin-day-section__table">

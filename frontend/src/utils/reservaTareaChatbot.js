@@ -1,13 +1,13 @@
 import { API_BASE_URL, backendConfigurado } from '../config/api'
+import i18n from '../i18n'
 
 import {
   esDiaCerrado,
-  formatearFechaLegible,
   parsearFechaDesdeTexto,
   parsearHoraDesdeTexto,
   turnoDesdeHora,
 } from './disponibilidadConsulta'
-import { crearReservaLocal, agregarReservaAlCacheLocal } from './reservasStorage'
+import { agregarReservaAlCacheLocal, crearReservaLocal } from './reservasStorage'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i
 
@@ -29,6 +29,11 @@ function extraerNombre(texto) {
     /nombre\s*(?:de\s*)?:?\s*([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ][^\n,;@]{1,40}?)(?:\s+y\s+|\s+correo|\s+email|,|@|$)/i,
     /\bsoy\s+([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ][a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s.'-]{1,30})\b/i,
     /(?:me llamo|mi nombre es)\s+([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ][a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s.'-]{1,30})\b/i,
+    /(?:book(?:ing)?|reserve)\s+(?:for|under)\s+([a-zA-Z][\w\s.'-]{1,30})/i,
+    /(?:name|nom)\s*:?\s*([a-zA-Z][\w\s.'-]{1,30})(?:\s*,|\s+email|\s+e-mail|@)/i,
+    /(?:my name is|i am|i'm)\s+([a-zA-Z][\w\s.'-]{1,30})\b/i,
+    /(?:reserv(?:e|er|ierung))\s+(?:für|pour|for)\s+([a-zA-ZäöüÄÖÜ][\w\s.'-]{1,30})/i,
+    /(?:nom|name)\s+(?:de\s+|du\s+)?([a-zA-Zàâçéèêëîïôùûü][\w\s.'-]{1,30})/i,
   ]
 
   for (const patron of patrones) {
@@ -59,12 +64,22 @@ export function esSolicitudCrearReserva(texto) {
     'hacer una reserva',
     'confirmar reserva',
     'book',
+    'booking',
+    'reserve',
+    'reservation',
+    'reserver',
+    'reservation',
+    'reservierung',
+    'tisch reservieren',
+    'table reserver',
   ]
 
   const esAccion = verbosReserva.some((verbo) => normalizado.includes(verbo))
   const tieneEmail = EMAIL_REGEX.test(texto)
   const mencionaNombre =
-    /a nombre|nombre:|nombre de|soy [a-z]|me llamo|mi nombre es/i.test(texto)
+    /a nombre|nombre:|nombre de|soy [a-z]|me llamo|mi nombre es|book for|reserve for|my name|nom:|name:|reservierung für|reserver pour/i.test(
+      texto,
+    )
 
   return esAccion && (tieneEmail || mencionaNombre)
 }
@@ -79,9 +94,20 @@ export function interpretarSolicitudReserva(texto) {
   const normalizado = normalizarTexto(texto)
 
   let turno = null
-  if (normalizado.includes('almuerzo') || normalizado.includes('comida')) {
+  if (
+    normalizado.includes('almuerzo') ||
+    normalizado.includes('comida') ||
+    normalizado.includes('lunch') ||
+    normalizado.includes('dejeuner') ||
+    normalizado.includes('mittagessen')
+  ) {
     turno = 'almuerzo'
-  } else if (normalizado.includes('cena')) {
+  } else if (
+    normalizado.includes('cena') ||
+    normalizado.includes('dinner') ||
+    normalizado.includes('diner') ||
+    normalizado.includes('abendessen')
+  ) {
     turno = 'cena'
   } else if (hora) {
     turno = turnoDesdeHora(hora.horas, hora.minutos).turno
@@ -94,9 +120,9 @@ export function interpretarSolicitudReserva(texto) {
   }
 
   const faltan = []
-  if (!nombre) faltan.push('nombre')
-  if (!email) faltan.push('correo electrónico')
-  if (!fecha) faltan.push('fecha')
+  if (!nombre) faltan.push(i18n.t('chatbot.fieldName'))
+  if (!email) faltan.push(i18n.t('chatbot.fieldEmail'))
+  if (!fecha) faltan.push(i18n.t('chatbot.fieldDate'))
 
   return {
     nombre,
@@ -134,7 +160,7 @@ export async function ejecutarReservaDesdeChat({ nombre, email, fecha, turno }) 
 
     const data = await response.json().catch(() => ({}))
     if (!response.ok) {
-      throw new Error(data?.error || 'No se pudo completar la reserva.')
+      throw new Error(data?.error || i18n.t('reservas.bookingFailed'))
     }
 
     if (data?.localizador) {

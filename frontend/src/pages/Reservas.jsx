@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { API_BASE_URL, backendConfigurado } from '../config/api'
 import { CONFIG_RESTAURANTE } from '../data/db'
 import {
@@ -13,9 +14,6 @@ import {
 const MESAS_MAX = CONFIG_RESTAURANTE.TOTAL_MESAS_MAX
 const POLLING_AFORO_MS = 12_000
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i
-
-const MSG_CIERRE =
-  '🍷 Cerramos los lunes y martes por mantenimiento de viñedos y descanso del personal. Elige otro día.'
 
 /* ── Utilidades ───────────────────────────────────────────────────────────── */
 
@@ -37,6 +35,7 @@ function fechaMinimaHoy() {
 
 /** Reservas conectadas al backend Express */
 export default function Reservas({ setPaginaActual }) {
+  const { t } = useTranslation()
   const [nombre, setNombre] = useState('')
   const [email, setEmail] = useState('')
   const [fecha, setFecha] = useState('')
@@ -82,13 +81,13 @@ export default function Reservas({ setPaginaActual }) {
       }
 
       if (esDiaCerrado(fechaSel)) {
-        setErrorMsg(MSG_CIERRE)
+        setErrorMsg(t('reservas.closedDay'))
         setStatusAforo(null)
         return false
       }
       return true
     },
-    [],
+    [t],
   )
 
   const handleCheckAforo = useCallback(
@@ -102,7 +101,7 @@ export default function Reservas({ setPaginaActual }) {
           const response = await fetch(`${API_BASE_URL}/api/disponibilidad?${params.toString()}`)
           data = await response.json().catch(() => ({}))
           if (!response.ok) {
-            throw new Error(data?.error || 'No se pudo consultar el aforo en tiempo real.')
+            throw new Error(data?.error || t('reservas.noAforo'))
           }
         }
 
@@ -113,12 +112,12 @@ export default function Reservas({ setPaginaActual }) {
         setMesasLibres(null)
         setErrorMsg(
           error.message === 'Failed to fetch'
-            ? 'No hay conexión con el servidor. Configura VITE_API_URL en Vercel o usa la web en local.'
-            : error.message || 'No pudimos consultar disponibilidad en este momento.',
+            ? t('reservas.noServer')
+            : error.message || t('reservas.noAvailability'),
         )
       }
     },
-    [],
+    [t],
   )
 
   const actualizarTurnosDisponibles = useCallback(async (fechaSel) => {
@@ -248,7 +247,7 @@ export default function Reservas({ setPaginaActual }) {
     if (!nombre.trim() || !email.trim() || !fecha) return
 
     if (!EMAIL_REGEX.test(email.trim())) {
-      setErrorMsg('Correo electrónico inválido. Revisa el formato e inténtalo de nuevo.')
+      setErrorMsg(t('reservas.invalidEmail'))
       return
     }
 
@@ -268,7 +267,7 @@ export default function Reservas({ setPaginaActual }) {
       }
 
       const turnoTexto =
-        turno === 'almuerzo' ? 'Almuerzo (12:00 – 16:00)' : 'Cena (19:30 – 23:00)'
+        turno === 'almuerzo' ? t('common.lunchFull') : t('common.dinnerFull')
 
       const maximo = data?.aforo?.maximo ?? MESAS_MAX
       const ocupadas = data?.aforo?.ocupadas ?? null
@@ -292,9 +291,9 @@ export default function Reservas({ setPaginaActual }) {
     } catch (error) {
       const mensaje =
         error.name === 'AbortError'
-          ? 'La solicitud tardó demasiado. Si recibiste el localizador, tu reserva está confirmada; si no, inténtalo de nuevo.'
+          ? t('reservas.timeout')
           : error.message === 'Failed to fetch'
-            ? 'No pudimos conectar con el servidor en este momento. Comprueba tu conexión e inténtalo de nuevo.'
+            ? t('reservas.connectionFailed')
             : error.message
       setErrorMsg(mensaje)
     } finally {
@@ -323,80 +322,87 @@ export default function Reservas({ setPaginaActual }) {
   return (
     <div className="reservas-page">
       <div className="reservas-card">
-        <h2 className="reservas-card__title">Reserva tu Mesa</h2>
+        <h2 className="reservas-card__title">{t('reservas.title')}</h2>
         <p className="reservas-card__subtitle">
-          Máximo {MESAS_MAX} mesas por turno. Confirma tu visita en segundos y recibe tu
-          localizador al instante.
+          {t('reservas.subtitle', { max: MESAS_MAX })}
         </p>
 
         {exito ? (
           <div className="reservas-exito">
-            <h3 className="reservas-exito__titulo">¡Reserva Confirmada!</h3>
-            <p className="reservas-exito__texto">
-              Gracias, <strong>{exito.nombre}</strong>. Tu mesa queda registrada para el
-              turno de {exito.turno}.
-            </p>
+            <h3 className="reservas-exito__titulo">{t('reservas.confirmed')}</h3>
+            <p
+              className="reservas-exito__texto"
+              dangerouslySetInnerHTML={{
+                __html: t('reservas.thanks', { name: exito.nombre, shift: exito.turno }),
+              }}
+            />
             <p className="text-muted" style={{ fontSize: '0.9rem' }}>
               {backendConfigurado() ? (
-                <>
-                  Confirmación enviada a: <strong>{exito.email}</strong>
-                </>
+                <span
+                  dangerouslySetInnerHTML={{
+                    __html: t('reservas.emailSent', { email: exito.email }),
+                  }}
+                />
               ) : (
-                <>
-                  Reserva registrada correctamente. Email: <strong>{exito.email}</strong>
-                </>
+                <span
+                  dangerouslySetInnerHTML={{
+                    __html: t('reservas.emailLocal', { email: exito.email }),
+                  }}
+                />
               )}
             </p>
-            <div className="reservas-exito__locator">LOCALIZADOR: {exito.localizador}</div>
+            <div className="reservas-exito__locator">
+              {t('reservas.locatorLabel', { code: exito.localizador })}
+            </div>
             {typeof exito.mesasRestantes === 'number' && (
               <p className="text-muted" style={{ fontSize: '0.9rem', marginTop: '1rem' }}>
-                Mesas libres restantes en ese turno: {exito.mesasRestantes}
+                {t('reservas.tablesLeft', { count: exito.mesasRestantes })}
               </p>
             )}
             <div className="reservas-exito__actions">
               <button type="button" className="btn-premium btn--block" onClick={nuevaReserva}>
-                Nueva reserva
+                {t('reservas.newReservation')}
               </button>
               <button
                 type="button"
                 className="btn-premium btn-premium--outline btn--block"
                 onClick={() => setPaginaActual?.('home')}
               >
-                Volver al inicio
+                {t('reservas.backHome')}
               </button>
             </div>
           </div>
         ) : (
           <form className="reservas-form" onSubmit={handleSubmit} noValidate>
             <div className="reservas-field">
-              <label htmlFor="nombre-titular">Nombre del cliente</label>
+              <label htmlFor="nombre-titular">{t('reservas.clientName')}</label>
               <input
                 id="nombre-titular"
                 type="text"
                 required
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
-                placeholder="Tu nombre completo"
+                placeholder={t('reservas.clientNamePh')}
                 disabled={enviando}
               />
             </div>
 
             <div className="reservas-field">
-              <label htmlFor="email-titular">Correo electrónico</label>
+              <label htmlFor="email-titular">{t('reservas.email')}</label>
               <input
                 id="email-titular"
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="tuemail@dominio.com"
+                placeholder={t('reservas.emailPh')}
                 disabled={enviando}
               />
             </div>
 
             <div className="reservas-row">
               <div className="reservas-field">
-                <label htmlFor="fecha-visita">Fecha</label>
+                <label htmlFor="fecha-visita">{t('reservas.visitDate')}</label>
                 <input
                   id="fecha-visita"
                   type="date"
@@ -408,13 +414,15 @@ export default function Reservas({ setPaginaActual }) {
                 />
               </div>
               <div className="reservas-field">
-                <label htmlFor="turno-visita">Turno</label>
+                <label htmlFor="turno-visita">{t('reservas.visitShift')}</label>
                 <select id="turno-visita" value={turno} onChange={onTurnoChange} disabled={enviando}>
                   <option value="almuerzo" disabled={almuerzoCompleto}>
-                    Almuerzo (12:00 – 16:00){almuerzoCompleto ? ' - Completo' : ''}
+                    {t('common.lunchFull')}
+                    {almuerzoCompleto ? t('common.shiftFull') : ''}
                   </option>
                   <option value="cena" disabled={cenaCompleto}>
-                    Cena (19:30 – 23:00){cenaCompleto ? ' - Completo' : ''}
+                    {t('common.dinnerFull')}
+                    {cenaCompleto ? t('common.shiftFull') : ''}
                   </option>
                 </select>
               </div>
@@ -422,7 +430,7 @@ export default function Reservas({ setPaginaActual }) {
 
             {fecha && ambosTurnosCompletos && !errorMsg && (
               <div className="reservas-alert" role="alert">
-                ⚫ No quedan mesas en ningún turno para esta fecha. Elige otra fecha.
+                {t('reservas.bothFull')}
               </div>
             )}
 
@@ -433,29 +441,29 @@ export default function Reservas({ setPaginaActual }) {
               >
                 {statusAforo.estado === 'disponible' && (
                   <p className="reservas-aforo-widget__texto">
-                    🟢 Excelente elección. Disponibilidad alta ({statusAforo.mesasLibres} mesas
-                    libres)
+                    {t('reservas.statusHigh', { count: statusAforo.mesasLibres })}
                   </p>
                 )}
 
                 {statusAforo.estado === 'ultimas_plazas' && (
                   <p className="reservas-aforo-widget__texto reservas-aforo-widget__texto--blink">
-                    🟠 ¡Date prisa! Quedan muy pocas mesas para este turno (
-                    {statusAforo.mesasLibres} mesas libres)
+                    {t('reservas.statusLow', { count: statusAforo.mesasLibres })}
                   </p>
                 )}
 
                 {statusAforo.estado === 'completo' && (
-                  <p className="reservas-aforo-widget__texto">
-                    ⚫ Aforo completo de 30 mesas. Por favor, selecciona otra fecha o turno.
-                  </p>
+                  <p className="reservas-aforo-widget__texto">{t('reservas.statusFull')}</p>
                 )}
               </div>
             )}
 
             {fecha && !errorMsg && typeof mesasLibres === 'number' && (
               <div className="reservas-aforo-panel" role="status">
-                Mesas disponibles: <strong>{mesasLibres}</strong> de {MESAS_MAX}
+                <span
+                  dangerouslySetInnerHTML={{
+                    __html: t('reservas.tablesAvailable', { free: mesasLibres, max: MESAS_MAX }),
+                  }}
+                />
               </div>
             )}
 
@@ -477,7 +485,7 @@ export default function Reservas({ setPaginaActual }) {
                 enviando
               }
             >
-              {enviando ? 'Confirmando reserva...' : 'Confirmar reserva'}
+              {enviando ? t('reservas.confirming') : t('reservas.confirm')}
             </button>
           </form>
         )}

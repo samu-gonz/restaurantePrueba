@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { MAPS_EMBED_URL, MAPS_URL, UBICACION_RESTAURANTE } from '../config/ubicacion'
 import { IMAGEN_CARTA_FALLBACK, menuData } from '../data/db'
+import { traducirCarta } from '../i18n/menu'
 import './Home.css'
 
 /* ── Tokens visuales ─────────────────────────────────────────────────────── */
@@ -11,31 +13,22 @@ const COLOR_TEXTO_MUTED = '#A3A3A3'
 const COLOR_ALERGENO = '#737373'
 const RADIUS_TOP = 16
 
-const CATEGORIAS = [
-  { id: 'todos', label: 'Todos' },
-  { id: 'entrantes', label: 'Entrantes' },
-  { id: 'carnes', label: 'Carnes' },
-  { id: 'pescados', label: 'Pescados' },
-  { id: 'postres', label: 'Postres' },
-]
+const CATEGORIA_IDS = ['todos', 'entrantes', 'carnes', 'pescados', 'postres']
 
 const HERO_CARRUSEL_INTERVALO_MS = 4000
-const imagenesCarrusel = [
+const imagenesCarruselKeys = ['1', '2', '3', '4']
+const imagenesCarruselUrls = [
   {
     url: 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=1600&h=600&q=80',
-    alt: 'Barricas de vino y bodega familiar en el norte de Tenerife',
   },
   {
     url: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1600&h=600&q=80',
-    alt: 'Carnes y guisos caseros cocinados a fuego lento',
   },
   {
     url: 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?auto=format&fit=crop&w=1600&h=600&q=80',
-    alt: 'Viñedos y valles de La Cruz Santa al atardecer',
   },
   {
     url: 'https://images.unsplash.com/photo-1516685018646-549198525c1b?auto=format&fit=crop&w=1600&h=600&q=80',
-    alt: 'Mesa servida con vino de la casa y producto de temporada',
   },
 ]
 
@@ -119,6 +112,15 @@ const estiloAlergenosPlato = {
 /* ── Carrusel panorámico del Hero ────────────────────────────────────────── */
 
 function HeroCarruselPanoramico() {
+  const { t } = useTranslation()
+  const imagenesCarrusel = useMemo(
+    () =>
+      imagenesCarruselUrls.map((item, index) => ({
+        ...item,
+        alt: t(`home.carousel.${imagenesCarruselKeys[index]}.alt`),
+      })),
+    [t],
+  )
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [tickAutoplay, setTickAutoplay] = useState(0)
 
@@ -143,7 +145,7 @@ function HeroCarruselPanoramico() {
       className="home-hero-carousel"
       role="region"
       aria-roledescription="carrusel"
-      aria-label="Galería visual del guachinche"
+      aria-label={t('home.carouselLabel')}
     >
       <div className="home-hero-carousel__viewport">
         {imagenesCarrusel.map((item, index) => (
@@ -165,14 +167,14 @@ function HeroCarruselPanoramico() {
         <div className="home-hero-carousel__gradient" aria-hidden="true" />
 
         <div className="home-hero-carousel__caption">
-          <p className="home-hero-carousel__caption-label">Nuestro espacio</p>
+          <p className="home-hero-carousel__caption-label">{t('home.carouselCaption')}</p>
           <p className="home-hero-carousel__caption-title">{slideActivo.alt}</p>
         </div>
 
         <div
           className="home-hero-carousel__dots"
           role="tablist"
-          aria-label="Seleccionar imagen del carrusel"
+          aria-label={t('home.carouselSelect')}
         >
           {imagenesCarrusel.map((item, index) => (
             <button
@@ -180,7 +182,7 @@ function HeroCarruselPanoramico() {
               type="button"
               role="tab"
               aria-selected={index === currentImageIndex}
-              aria-label={`Ver imagen ${index + 1}: ${item.alt}`}
+              aria-label={t('home.carouselView', { n: index + 1, alt: item.alt })}
               className={
                 index === currentImageIndex
                   ? 'home-hero-carousel__dot is-active'
@@ -223,6 +225,8 @@ function ImagenPlato({ src, alt }) {
 /* ── Tarjeta de plato (dos bloques: imagen + texto) ──────────────────────── */
 
 function TarjetaPlato({ plato }) {
+  const { t } = useTranslation()
+
   return (
     <article className="home-plato-card" aria-label={plato.nombre}>
       <div className="home-plato-card__img-wrap" style={estiloContenedorImagen}>
@@ -239,8 +243,8 @@ function TarjetaPlato({ plato }) {
 
         <p style={estiloAlergenosPlato}>
           {plato.alergenos.length > 0
-            ? `Alérgenos: ${plato.alergenos.join(', ')}`
-            : 'Sin alérgenos declarados'}
+            ? t('home.allergens', { list: plato.alergenos.join(', ') })
+            : t('home.noAllergens')}
         </p>
       </div>
     </article>
@@ -250,12 +254,20 @@ function TarjetaPlato({ plato }) {
 /* ── Página principal ────────────────────────────────────────────────────── */
 
 export default function Home({ setPaginaActual }) {
+  const { t, i18n } = useTranslation()
   const [categoria, setCategoria] = useState('todos')
+
+  const categorias = useMemo(
+    () => CATEGORIA_IDS.map((id) => ({ id, label: t(`categories.${id}`) })),
+    [t, i18n.language],
+  )
+
+  const cartaTraducida = useMemo(() => traducirCarta(menuData), [i18n.language])
 
   const platosFiltrados =
     categoria === 'todos'
-      ? menuData
-      : menuData.filter((plato) => plato.categoria === categoria)
+      ? cartaTraducida
+      : cartaTraducida.filter((plato) => plato.categoria === categoria)
 
   const irCarta = () => {
     document.getElementById('carta-digital')?.scrollIntoView({ behavior: 'smooth' })
@@ -274,24 +286,21 @@ export default function Home({ setPaginaActual }) {
         <div className="home-hero__content-wrap">
           <div className="home-hero__content">
             <h1 id="home-hero-title" className="home-hero__title">
-              Sabor de la tierra.
+              {t('home.heroTitle1')}
               <br />
-              <span className="home-hero__accent">Tradición canaria.</span>
+              <span className="home-hero__accent">{t('home.heroTitle2')}</span>
             </h1>
-            <p className="home-hero__desc">
-              Producto fresco de temporada, vino de nuestra cosecha y cocina hecha con
-              pasión en el corazón vitivinícola de Los Realejos.
-            </p>
+            <p className="home-hero__desc">{t('home.heroSubtitle')}</p>
             <div className="home-hero__actions">
               <button type="button" className="btn-premium" onClick={irCarta}>
-                Explorar Carta
+                {t('home.exploreMenu')}
               </button>
               <button
                 type="button"
                 className="btn-premium btn-premium--outline"
                 onClick={() => setPaginaActual?.('reservas')}
               >
-                Asegurar Mesa
+                {t('home.bookTable')}
               </button>
             </div>
           </div>
@@ -302,10 +311,10 @@ export default function Home({ setPaginaActual }) {
       <section
         id="contacto"
         className="bento-grid home-bento"
-        aria-label="Información del local y contacto"
+        aria-label={t('home.locationSection')}
       >
         <article id="ubicacion" className="bento-card">
-          <h3 className="bento-card__title">Nuestra Ubicación</h3>
+          <h3 className="bento-card__title">{t('home.ourLocation')}</h3>
           <p className="bento-card__text">
             <a className="bento-card__direccion" href={MAPS_URL} target="_blank" rel="noopener noreferrer">
               <span style={{ color: '#9B111E', marginRight: '0.35rem' }} aria-hidden="true">
@@ -318,42 +327,36 @@ export default function Home({ setPaginaActual }) {
           </p>
           <iframe
             className="bento-card__mapa"
-            title={`Mapa de ${UBICACION_RESTAURANTE.nombre}`}
+            title={t('home.mapOf', { name: UBICACION_RESTAURANTE.nombre })}
             src={MAPS_EMBED_URL}
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"
             allowFullScreen
           />
-          <p className="bento-card__text">
-            En La Cruz Santa, entre viñedos y valle, cocinamos cada día con ingredientes
-            de proximidad y el carácter de un guachinche auténtico del norte de Tenerife.
-          </p>
+          <p className="bento-card__text">{t('home.locationBody')}</p>
           <a
             href={MAPS_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="btn-premium bento-card__btn"
           >
-            Abrir en Google Maps
+            {t('home.openMaps')}
           </a>
         </article>
         <article className="bento-card bento-card--accent bento-card--vino">
-          <h3 className="bento-card__title">Vino de Cosecha</h3>
-          <p className="bento-card__text">
-            Listán Negro y blanco afrutado de nuestras barricas, servidos en jarra para
-            acompañar guisos, carnes y pescados del día.
-          </p>
+          <h3 className="bento-card__title">{t('home.wineTitle')}</h3>
+          <p className="bento-card__text">{t('home.wineBody')}</p>
         </article>
       </section>
 
       {/* Carta */}
       <section id="carta-digital" className="carta-digital" aria-labelledby="carta-titulo">
         <h2 id="carta-titulo" className="carta-digital__title">
-          La Carta de Hoy
+          {t('home.menuToday')}
         </h2>
 
-        <div className="carta-filters" role="tablist" aria-label="Filtrar por categoría">
-          {CATEGORIAS.map(({ id, label }) => (
+        <div className="carta-filters" role="tablist" aria-label={t('home.filterCategory')}>
+          {categorias.map(({ id, label }) => (
             <button
               key={id}
               type="button"
@@ -374,9 +377,7 @@ export default function Home({ setPaginaActual }) {
         </div>
 
         {platosFiltrados.length === 0 && (
-          <p className="carta-digital__empty text-muted">
-            No hay platos en esta categoría.
-          </p>
+          <p className="carta-digital__empty text-muted">{t('home.noDishes')}</p>
         )}
       </section>
     </div>
