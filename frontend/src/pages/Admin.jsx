@@ -174,7 +174,7 @@ function PanelReservasAdmin({ onCerrarSesion }) {
     }
 
     const controller = new AbortController()
-    const timeoutId = window.setTimeout(() => controller.abort(), 15_000)
+    const timeoutId = window.setTimeout(() => controller.abort(), 90_000)
 
     const url = new URL(`${API_BASE_URL}/api/admin/reservas`)
     if (filtroFecha) url.searchParams.set('fecha', filtroFecha)

@@ -75,14 +75,6 @@ export async function iniciarSesionAdmin(usuario, contrasena) {
       return
     }
 
-    if (
-      (response.status === 503 || response.status === 401) &&
-      credencialesLocalesValidas(usuarioNormalizado, contrasenaEnviada)
-    ) {
-      guardarTokenAdmin(TOKEN_SESION_LOCAL)
-      return
-    }
-
     throw new Error(data?.error || 'No se pudo iniciar sesión.')
   } catch (error) {
     if (error.name === 'AbortError') {
@@ -92,7 +84,9 @@ export async function iniciarSesionAdmin(usuario, contrasena) {
     }
 
     if (
-      error.message === 'Failed to fetch' &&
+      !backendConfigurado() &&
+      (error.message === 'Failed to fetch' ||
+        error.message?.includes('No se pudo iniciar sesión')) &&
       credencialesLocalesValidas(usuarioNormalizado, contrasenaEnviada)
     ) {
       guardarTokenAdmin(TOKEN_SESION_LOCAL)
@@ -103,9 +97,10 @@ export async function iniciarSesionAdmin(usuario, contrasena) {
       throw error
     }
 
-    if (credencialesLocalesValidas(usuarioNormalizado, contrasenaEnviada)) {
-      guardarTokenAdmin(TOKEN_SESION_LOCAL)
-      return
+    if (error.message === 'Failed to fetch') {
+      throw new Error(
+        'No se pudo conectar con el servidor. Si es la primera vez tras un rato sin uso, espera hasta un minuto y vuelve a intentarlo.',
+      )
     }
 
     throw error
