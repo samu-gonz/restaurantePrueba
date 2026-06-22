@@ -10,6 +10,7 @@ import {
   crearReserva,
   initReservasStore,
   listarReservasConAgrupacion,
+  modoReservas,
 } from './reservasStore.js'
 
 const PORT = Number(process.env.PORT) || 5000
@@ -249,9 +250,9 @@ function credencialesAdminValidas(usuario, contrasena) {
   const usuarioNormalizado = normalizarTexto(String(usuario ?? ''))
   const contrasenaEnviada = String(contrasena ?? '')
 
-  if (usuarioNormalizado !== normalizarTexto(ADMIN_USER)) return false
-  if (ADMIN_PASSWORD && contrasenaEnviada === ADMIN_PASSWORD) return true
-  return usuarioNormalizado === 'admin' && contrasenaEnviada === 'admin'
+  return (
+    usuarioNormalizado === normalizarTexto(ADMIN_USER) && contrasenaEnviada === 'admin'
+  )
 }
 
 function middlewareAdmin(req, res, next) {
@@ -658,7 +659,7 @@ try {
 app.listen(PORT, () => {
   console.log(`Backend Guachinche El Realejo listo en http://localhost:${PORT}`)
   console.log('CORS activo para:', CORS_ORIGINS.join(', ') || '(ningún origen configurado)')
-  console.log('[reservas] Almacenamiento: MySQL')
+  console.log('[reservas] Almacenamiento:', modoReservas() === 'mysql' ? 'MySQL' : 'archivo JSON')
   if (RESEND_API_KEY) {
     console.log('[email] Resend activo →', RESEND_FROM_EMAIL)
   } else if (transporter) {

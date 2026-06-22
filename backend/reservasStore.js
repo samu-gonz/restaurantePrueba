@@ -1,6 +1,14 @@
+import fs from 'fs/promises'
+import path from 'path'
+import { fileURLToPath } from 'url'
+
 import mysql from 'mysql2/promise'
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const JSON_PATH = path.join(__dirname, 'data', 'reservas.json')
+
 let pool = null
+let modo = 'json'
 
 export class AforoCompletoError extends Error {
   constructor() {
@@ -17,7 +25,7 @@ export class ReservasStoreError extends Error {
 }
 
 export function modoReservas() {
-  return 'mysql'
+  return modo
 }
 
 function dbConfigurada() {
@@ -66,6 +74,29 @@ function agruparPorDia(reservas) {
   return porDia
 }
 
+async function ensureJsonFile() {
+  await fs.mkdir(path.dirname(JSON_PATH), { recursive: true })
+  try {
+    await fs.access(JSON_PATH)
+  } catch {
+    await fs.writeFile(JSON_PATH, JSON.stringify({ reservas: [], nextId: 1 }, null, 2), 'utf8')
+  }
+}
+
+async function leerJson() {
+  await ensureJsonFile()
+  const raw = await fs.readFile(JSON_PATH, 'utf8')
+  const data = JSON.parse(raw)
+  if (!Array.isArray(data.reservas)) data.reservas = []
+  if (!Number.isFinite(data.nextId)) data.nextId = data.reservas.length + 1
+  return data
+}
+
+async function escribirJson(data) {
+  await fs.mkdir(path.dirname(JSON_PATH), { recursive: true })
+  await fs.writeFile(JSON_PATH, JSON.stringify(data, null, 2), 'utf8')
+}
+
 async function ensureSchemaMysql() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS reservas (
@@ -83,12 +114,17 @@ async function ensureSchemaMysql() {
   `)
 }
 
+async function activarModoJson(motivo) {
+  await ensureJsonFile()
+  modo = 'json'
+  pool = null
+  console.warn(`[reservas] Usando archivo JSON (${motivo}) →`, JSON_PATH)
+}
+
 export async function initReservasStore() {
   if (!dbConfigurada()) {
-    throw new ReservasStoreError(
-      'MySQL no configurado. Define DB_HOST, DB_USER, DB_NAME y DB_PASSWORD en backend/.env. ' +
-        'En local: activa MySQL en XAMPP o ejecuta docker compose up -d',
-    )
+    await activarModoJson('sin MySQL en variables de entorno')
+    return
   }
 
   pool = mysql.createPool({
@@ -105,39 +141,46 @@ export async function initReservasStore() {
   try {
     await pool.query('SELECT 1')
     await ensureSchemaMysql()
+    modo = 'mysql'
     console.log('[reservas] MySQL activo →', process.env.DB_NAME, '@', process.env.DB_HOST)
   } catch (error) {
     await pool.end().catch(() => {})
-    pool = null
-    throw new ReservasStoreError(
-      `No se pudo conectar a MySQL (${error.message}). ` +
-        'Comprueba que MySQL esté activo en XAMPP o ejecuta docker compose up -d.',
-    )
+    await activarModoJson(`MySQL no disponible: ${error.message}`)
   }
 }
 
 export async function contarMesasOcupadas(fecha, turno) {
-  const [rows] = await pool.query(
-    'SELECT COUNT(*) AS total FROM reservas WHERE fecha = ? AND turno = ?',
-    [fecha, turno],
-  )
-  return Number(rows[0]?.total ?? 0)
+  if (modo === 'mysql') {
+    const [rows] = await pool.query(
+      'SELECT COUNT(*) AS total FROM reservas WHERE fecha = ? AND turno = ?',
+      [fecha, turno],
+    )
+    return Number(rows[0]?.total ?? 0)
+  }
+
+  const data = await leerJson()
+  return data.reservas.filter((r) => r.fecha === fecha && r.turno === turno).length
 }
 
 export async function listarReservas({ fecha } = {}) {
   let reservas = []
 
-  if (fecha) {
-    const [rows] = await pool.query(
-      'SELECT id, nombre, email, fecha, turno, localizador, created_at FROM reservas WHERE fecha = ? ORDER BY turno ASC, created_at ASC',
-      [fecha],
-    )
-    reservas = rows.map(mapFilaReserva)
+  if (modo === 'mysql') {
+    if (fecha) {
+      const [rows] = await pool.query(
+        'SELECT id, nombre, email, fecha, turno, localizador, created_at FROM reservas WHERE fecha = ? ORDER BY turno ASC, created_at ASC',
+        [fecha],
+      )
+      reservas = rows.map(mapFilaReserva)
+    } else {
+      const [rows] = await pool.query(
+        'SELECT id, nombre, email, fecha, turno, localizador, created_at FROM reservas ORDER BY fecha ASC, turno ASC, created_at ASC',
+      )
+      reservas = rows.map(mapFilaReserva)
+    }
   } else {
-    const [rows] = await pool.query(
-      'SELECT id, nombre, email, fecha, turno, localizador, created_at FROM reservas ORDER BY fecha ASC, turno ASC, created_at ASC',
-    )
-    reservas = rows.map(mapFilaReserva)
+    const data = await leerJson()
+    reservas = fecha ? data.reservas.filter((r) => r.fecha === fecha) : data.reservas.slice()
   }
 
   return ordenarReservas(reservas)
@@ -149,41 +192,65 @@ export async function listarReservasConAgrupacion({ fecha } = {}) {
     total: reservas.length,
     reservas,
     porDia: agruparPorDia(reservas),
-    almacenamiento: 'mysql',
+    almacenamiento: modo,
   }
 }
 
 export async function crearReserva({ nombre, email, fecha, turno, localizador, mesasMax }) {
-  const connection = await pool.getConnection()
+  if (modo === 'mysql') {
+    const connection = await pool.getConnection()
 
-  try {
-    await connection.beginTransaction()
+    try {
+      await connection.beginTransaction()
 
-    const [conteo] = await connection.query(
-      'SELECT COUNT(*) AS total FROM reservas WHERE fecha = ? AND turno = ? FOR UPDATE',
-      [fecha, turno],
-    )
+      const [conteo] = await connection.query(
+        'SELECT COUNT(*) AS total FROM reservas WHERE fecha = ? AND turno = ? FOR UPDATE',
+        [fecha, turno],
+      )
 
-    if (Number(conteo[0]?.total ?? 0) >= mesasMax) {
-      throw new AforoCompletoError()
+      if (Number(conteo[0]?.total ?? 0) >= mesasMax) {
+        throw new AforoCompletoError()
+      }
+
+      const [resultado] = await connection.query(
+        'INSERT INTO reservas (nombre, email, fecha, turno, localizador) VALUES (?, ?, ?, ?, ?)',
+        [nombre, email, fecha, turno, localizador],
+      )
+
+      const [filas] = await connection.query(
+        'SELECT id, nombre, email, fecha, turno, localizador, created_at FROM reservas WHERE id = ?',
+        [resultado.insertId],
+      )
+
+      await connection.commit()
+      return mapFilaReserva(filas[0])
+    } catch (error) {
+      await connection.rollback()
+      throw error
+    } finally {
+      connection.release()
     }
-
-    const [resultado] = await connection.query(
-      'INSERT INTO reservas (nombre, email, fecha, turno, localizador) VALUES (?, ?, ?, ?, ?)',
-      [nombre, email, fecha, turno, localizador],
-    )
-
-    const [filas] = await connection.query(
-      'SELECT id, nombre, email, fecha, turno, localizador, created_at FROM reservas WHERE id = ?',
-      [resultado.insertId],
-    )
-
-    await connection.commit()
-    return mapFilaReserva(filas[0])
-  } catch (error) {
-    await connection.rollback()
-    throw error
-  } finally {
-    connection.release()
   }
+
+  const data = await leerJson()
+  const ocupadas = data.reservas.filter((r) => r.fecha === fecha && r.turno === turno).length
+
+  if (ocupadas >= mesasMax) {
+    throw new AforoCompletoError()
+  }
+
+  const reserva = {
+    id: data.nextId,
+    nombre,
+    email,
+    fecha,
+    turno,
+    localizador,
+    createdAt: new Date().toISOString(),
+  }
+
+  data.nextId += 1
+  data.reservas.push(reserva)
+  await escribirJson(data)
+  return reserva
 }
