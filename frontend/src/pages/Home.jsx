@@ -307,13 +307,13 @@ export default function Home({ setPaginaActual }) {
         </div>
       </section>
 
-      {/* Bento */}
+      {/* Bento — ubicación */}
       <section
-        id="contacto"
+        id="ubicacion"
         className="bento-grid home-bento"
         aria-label={t('home.locationSection')}
       >
-        <article id="ubicacion" className="bento-card">
+        <article className="bento-card bento-card--ubicacion">
           <h3 className="bento-card__title">{t('home.ourLocation')}</h3>
           <p className="bento-card__text">
             <a className="bento-card__direccion" href={MAPS_URL} target="_blank" rel="noopener noreferrer">

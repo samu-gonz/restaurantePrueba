@@ -144,12 +144,15 @@ export default function Navbar({ paginaActual, setPaginaActual, chatAbierto, onT
       setSeccionActiva(enlaceId)
 
       const scrollASeccion = () => {
-        document.getElementById(seccionId)?.scrollIntoView({ behavior: 'smooth' })
+        const destino = document.getElementById(seccionId)
+        if (destino) {
+          destino.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
       }
 
       if (paginaActual !== 'home') {
         setPaginaActual('home')
-        window.setTimeout(scrollASeccion, 180)
+        window.setTimeout(scrollASeccion, 400)
       } else {
         scrollASeccion()
       }
