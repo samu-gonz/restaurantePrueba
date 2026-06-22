@@ -3,14 +3,15 @@ import { useTranslation } from 'react-i18next'
 import './LanguageSwitcher.css'
 
 const IDIOMAS = [
-  { code: 'es', labelKey: 'lang.es' },
-  { code: 'en', labelKey: 'lang.en' },
-  { code: 'fr', labelKey: 'lang.fr' },
-  { code: 'de', labelKey: 'lang.de' },
+  { code: 'es', labelKey: 'lang.es', flag: '🇪🇸' },
+  { code: 'en', labelKey: 'lang.en', flag: '🇬🇧' },
+  { code: 'fr', labelKey: 'lang.fr', flag: '🇫🇷' },
+  { code: 'de', labelKey: 'lang.de', flag: '🇩🇪' },
 ]
 
 export default function LanguageSwitcher({ compact = false }) {
   const { t, i18n } = useTranslation()
+  const idiomaActivo = i18n.language?.split('-')[0] ?? 'es'
 
   return (
     <div
@@ -18,22 +19,26 @@ export default function LanguageSwitcher({ compact = false }) {
       role="group"
       aria-label={t('lang.label')}
     >
-      {IDIOMAS.map(({ code, labelKey }) => (
-        <button
-          key={code}
-          type="button"
-          className={
-            i18n.language === code
-              ? 'lang-switcher__btn lang-switcher__btn--active'
-              : 'lang-switcher__btn'
-          }
-          onClick={() => i18n.changeLanguage(code)}
-          aria-pressed={i18n.language === code}
-          title={t(labelKey)}
-        >
-          {code.toUpperCase()}
-        </button>
-      ))}
+      {IDIOMAS.map(({ code, labelKey, flag }) => {
+        const activo = idiomaActivo === code
+        const nombre = t(labelKey)
+
+        return (
+          <button
+            key={code}
+            type="button"
+            className={activo ? 'lang-switcher__btn lang-switcher__btn--active' : 'lang-switcher__btn'}
+            onClick={() => i18n.changeLanguage(code)}
+            aria-pressed={activo}
+            aria-label={nombre}
+            title={nombre}
+          >
+            <span className="lang-switcher__flag" aria-hidden="true">
+              {flag}
+            </span>
+          </button>
+        )
+      })}
     </div>
   )
 }
