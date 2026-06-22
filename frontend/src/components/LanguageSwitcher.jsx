@@ -3,10 +3,10 @@ import { useTranslation } from 'react-i18next'
 import './LanguageSwitcher.css'
 
 const IDIOMAS = [
-  { code: 'es', labelKey: 'lang.es', flag: '🇪🇸' },
-  { code: 'en', labelKey: 'lang.en', flag: '🇬🇧' },
-  { code: 'fr', labelKey: 'lang.fr', flag: '🇫🇷' },
-  { code: 'de', labelKey: 'lang.de', flag: '🇩🇪' },
+  { code: 'es', labelKey: 'lang.es', flagSrc: '/flags/es.svg' },
+  { code: 'en', labelKey: 'lang.en', flagSrc: '/flags/gb.svg' },
+  { code: 'fr', labelKey: 'lang.fr', flagSrc: '/flags/fr.svg' },
+  { code: 'de', labelKey: 'lang.de', flagSrc: '/flags/de.svg' },
 ]
 
 export default function LanguageSwitcher({ compact = false }) {
@@ -19,7 +19,7 @@ export default function LanguageSwitcher({ compact = false }) {
       role="group"
       aria-label={t('lang.label')}
     >
-      {IDIOMAS.map(({ code, labelKey, flag }) => {
+      {IDIOMAS.map(({ code, labelKey, flagSrc }) => {
         const activo = idiomaActivo === code
         const nombre = t(labelKey)
 
@@ -33,9 +33,15 @@ export default function LanguageSwitcher({ compact = false }) {
             aria-label={nombre}
             title={nombre}
           >
-            <span className="lang-switcher__flag" aria-hidden="true">
-              {flag}
-            </span>
+            <img
+              className="lang-switcher__flag"
+              src={flagSrc}
+              alt=""
+              width={28}
+              height={19}
+              loading="lazy"
+              decoding="async"
+            />
           </button>
         )
       })}
