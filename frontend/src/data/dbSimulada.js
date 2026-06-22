@@ -195,8 +195,8 @@ export function generarLocalizador() {
   return `#RE-${year}${sufijo}`
 }
 
-export function formatearPrecio(precio, locale = 'es-ES') {
-  return new Intl.NumberFormat(locale, {
+export function formatearPrecio(precio) {
+  return new Intl.NumberFormat('es-ES', {
     style: 'currency',
     currency: 'EUR',
   }).format(precio)

@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MAPS_EMBED_URL, MAPS_URL, UBICACION_RESTAURANTE } from '../config/ubicacion'
-import { IMAGEN_CARTA_FALLBACK, formatearPrecio, menuData } from '../data/db'
-import { localeFecha } from '../i18n'
+import { IMAGEN_CARTA_FALLBACK, menuData } from '../data/db'
 import { traducirCarta } from '../i18n/menu'
 import './Home.css'
 
@@ -15,7 +14,6 @@ const COLOR_ALERGENO = '#737373'
 const RADIUS_TOP = 16
 
 const CATEGORIA_IDS = ['todos', 'entrantes', 'carnes', 'pescados', 'postres']
-const ORDEN_CATEGORIAS = ['entrantes', 'carnes', 'pescados', 'postres']
 
 const HERO_CARRUSEL_INTERVALO_MS = 4000
 const imagenesCarruselKeys = ['1', '2', '3', '4']
@@ -226,56 +224,19 @@ function ImagenPlato({ src, alt }) {
 
 /* ── Tarjeta de plato (dos bloques: imagen + texto) ──────────────────────── */
 
-function agruparPlatosPorCategoria(platos) {
-  const mapa = new Map()
-  for (const plato of platos) {
-    if (!mapa.has(plato.categoria)) mapa.set(plato.categoria, [])
-    mapa.get(plato.categoria).push(plato)
-  }
-  return ORDEN_CATEGORIAS.filter((cat) => mapa.has(cat)).map((cat) => [cat, mapa.get(cat)])
-}
-
-function ListaCartaPrecios({ platos, locale }) {
+function TarjetaPlato({ plato }) {
   const { t } = useTranslation()
-  const grupos = agruparPlatosPorCategoria(platos)
 
   return (
-    <div className="carta-lista-precios" aria-label={t('home.menuToday')}>
-      {grupos.map(([categoria, platosCategoria]) => (
-        <div key={categoria} className="carta-lista-precios__grupo">
-          <h3 className="carta-lista-precios__categoria">{t(`categories.${categoria}`)}</h3>
-          <ul className="carta-lista-precios__lista">
-            {platosCategoria.map((plato) => (
-              <li key={plato.id} className="carta-lista-precios__item">
-                <span className="carta-lista-precios__nombre">{plato.nombre}</span>
-                <span className="carta-lista-precios__puntos" aria-hidden="true" />
-                <span className="carta-lista-precios__precio">
-                  {formatearPrecio(plato.precio, locale)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function TarjetaPlato({ plato, locale }) {
-  const { t } = useTranslation()
-  const precioTexto = formatearPrecio(plato.precio, locale)
-
-  return (
-    <article className="home-plato-card" aria-label={`${plato.nombre} — ${precioTexto}`}>
+    <article className="home-plato-card" aria-label={plato.nombre}>
       <div className="home-plato-card__img-wrap" style={estiloContenedorImagen}>
         <ImagenPlato src={plato.imagen} alt={plato.nombre} />
-        <span className="home-plato-card__precio-badge">{precioTexto}</span>
       </div>
 
       <div className="home-plato-card__body" style={estiloCuerpoTexto}>
         <header style={estiloCabeceraPlato}>
           <h3 style={estiloNombrePlato}>{plato.nombre}</h3>
-          <span style={estiloPrecioPlato}>{precioTexto}</span>
+          <span style={estiloPrecioPlato}>{plato.precio.toFixed(2)} €</span>
         </header>
 
         <p style={estiloDescripcionPlato}>{plato.descripcion}</p>
@@ -302,7 +263,6 @@ export default function Home({ setPaginaActual }) {
   )
 
   const cartaTraducida = useMemo(() => traducirCarta(menuData), [i18n.language])
-  const localeMoneda = localeFecha()
 
   const platosFiltrados =
     categoria === 'todos'
@@ -410,11 +370,9 @@ export default function Home({ setPaginaActual }) {
           ))}
         </div>
 
-        <ListaCartaPrecios platos={platosFiltrados} locale={localeMoneda} />
-
         <div className="home-carta-grid">
           {platosFiltrados.map((plato) => (
-            <TarjetaPlato key={plato.id} plato={plato} locale={localeMoneda} />
+            <TarjetaPlato key={plato.id} plato={plato} />
           ))}
         </div>
 
